@@ -11,6 +11,8 @@
             :category-groups="categoryGroups"
             :selected-category="selectedCategory"
             :expanded-parent-ids="expandedParentIds"
+            :category-counts="listCategoryProductCounts"
+            :total-products="listTotalProductCount"
             @select="selectCategory"
             @toggle="toggleParentCategory"
           />
@@ -97,6 +99,7 @@
               <img v-if="cat.icon" :src="getImageUrl(cat.icon)" :alt="catName(cat)" loading="lazy" class="h-6 w-6 object-contain" />
               <Tag v-else class="h-[22px] w-[22px]" />
             </span>
+            <span class="absolute right-[18px] top-[18px] inline-flex min-w-8 items-center justify-center rounded-full bg-black/15 px-2 py-1 text-xs font-extrabold tabular-nums backdrop-blur-sm dark:bg-white/15">{{ cardCategoryProductCounts[cat.id] || 0 }}</span>
             <div class="min-w-0"><div class="line-clamp-2 break-words font-bold">{{ catName(cat) }}</div></div>
           </RouterLink>
         </div>
@@ -155,12 +158,6 @@
       @update:visible="quickBuyVisible = $event"
     />
 
-    <AnnouncementModal
-      v-if="activeAnnouncement"
-      :announcement="activeAnnouncement"
-      :visible="announcementVisible"
-      @update:visible="announcementVisible = $event"
-    />
   </div>
 </template>
 
@@ -176,6 +173,7 @@ import { getImageUrl } from '../../utils/image'
 import { useLocalized } from '../../composables/useProduct'
 import { useProductList } from '../../composables/useProductList'
 import { useProductListGroups } from '../../composables/useProductListGroups'
+import { fetchCategoryProductCounts, type CategoryProductCounts } from '../../composables/useCategoryProductCounts'
 import { usePageSeo } from '../../composables/usePageSeo'
 import { useAppStore } from '../../stores/app'
 import VaultProductCard from './components/VaultProductCard.vue'
@@ -183,8 +181,6 @@ import VaultProductListItem from './components/VaultProductListItem.vue'
 import VaultCategorySidebar from './components/VaultCategorySidebar.vue'
 import VaultBannerHero from './components/VaultBannerHero.vue'
 import ProductQuickBuy from '../../components/ProductQuickBuy.vue'
-import AnnouncementModal from '../../components/AnnouncementModal.vue'
-import { useAnnouncement, type HomeAnnouncement } from '../../composables/useAnnouncement'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -211,6 +207,8 @@ const {
   totalPages: listTotalPages,
   expandedParentIds,
   categoryGroups,
+  categoryProductCounts: listCategoryProductCounts,
+  totalProductCount: listTotalProductCount,
   categoryMap: listCategoryMap,
   selectCategory,
   toggleParentCategory,
@@ -243,6 +241,7 @@ const products = ref<any[]>([])
 const productsLoading = ref(true)
 const posts = ref<any[]>([])
 const topCategories = ref<PublicCategory[]>([])
+const cardCategoryProductCounts = ref<CategoryProductCounts>({})
 
 const catColors = [
   'bg-[color:var(--red)] text-white',
@@ -261,18 +260,6 @@ const latestVisible = computed(() => blogEnabled.value || noticeEnabled.value)
 
 const formatDate = (value: string) => (value ? new Date(value).toLocaleDateString() : '')
 
-// ==================== 公告弹窗（版本化可关闭，两种模式共用） ====================
-const { shouldShow } = useAnnouncement()
-const activeAnnouncement = ref<HomeAnnouncement | null>(null)
-const announcementVisible = ref(false)
-const showAnnouncementIfNeeded = () => {
-  const announcement = appStore.config?.announcement as HomeAnnouncement | undefined
-  if (announcement && shouldShow(announcement)) {
-    activeAnnouncement.value = announcement
-    announcementVisible.value = true
-  }
-}
-
 const loadProducts = async () => {
   productsLoading.value = true
   try {
@@ -288,9 +275,22 @@ const loadProducts = async () => {
 const loadCategories = async () => {
   try {
     const res = await categoryAPI.list()
-    topCategories.value = buildCategoryGroups(res.data.data || []).slice(0, 10)
+    const rows = (res.data.data || []) as PublicCategory[]
+    const giftCardRoot = rows.find((category) => category.slug === 'us-gift-cards')
+    const giftCardChildren = giftCardRoot
+      ? rows.filter((category) => Number(category.parent_id || 0) === Number(giftCardRoot.id))
+      : []
+    topCategories.value = (giftCardChildren.length ? giftCardChildren : buildCategoryGroups(rows)).slice(0, 10)
   } catch (err) {
     console.error('Failed to load categories:', err)
+  }
+}
+
+const loadCardCategoryProductCounts = async () => {
+  try {
+    cardCategoryProductCounts.value = (await fetchCategoryProductCounts()).counts
+  } catch (err) {
+    console.error('Failed to load category product counts:', err)
   }
 }
 
@@ -327,9 +327,8 @@ onMounted(async () => {
   if (isListMode.value) {
     await listInitialize()
   } else {
-    await Promise.all([loadProducts(), loadCategories(), loadPosts()])
+    await Promise.all([loadProducts(), loadCategories(), loadCardCategoryProductCounts(), loadPosts()])
   }
-  showAnnouncementIfNeeded()
 })
 
 onUnmounted(() => listCleanup())

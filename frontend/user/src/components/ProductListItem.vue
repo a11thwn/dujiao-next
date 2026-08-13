@@ -1,7 +1,7 @@
 <template>
   <Card
     class="group relative overflow-hidden flex flex-row items-center rounded-xl transition-all cursor-pointer theme-slide-up"
-    :class="isSoldOut(product)
+    :class="visuallySoldOut
       ? 'opacity-85 grayscale-[0.25] saturate-50 border-destructive/30'
       : 'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md'"
     :style="{ animationDelay: `${index * animationStep}ms` }"
@@ -12,16 +12,16 @@
       <img v-if="product.images && getFirstImageUrl(product.images)" :src="getFirstImageUrl(product.images)"
         :alt="getLocalizedText(product.title)" loading="lazy"
         class="w-full h-full object-cover transition-transform duration-500"
-        :class="isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
+        :class="visuallySoldOut ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
       <img v-else-if="product.category?.icon" :src="getImageUrl(product.category.icon)"
         :alt="getLocalizedText(product.category?.name)" loading="lazy"
         class="w-full h-full object-cover transition-transform duration-500"
-        :class="isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
+        :class="visuallySoldOut ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
       <div v-else class="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
         <ImageIcon class="w-5 h-5" :stroke-width="1.5" />
       </div>
       <!-- Sold out overlay -->
-      <div v-if="isSoldOut(product)" class="absolute inset-0 bg-black/50 flex items-center justify-center">
+      <div v-if="visuallySoldOut" class="absolute inset-0 bg-black/50 flex items-center justify-center">
         <span class="text-white text-[10px] font-bold">{{ t('products.stockStatus.outOfStock') }}</span>
       </div>
     </div>
@@ -44,7 +44,10 @@
       </div>
 
       <!-- Row 2: Badges -->
-      <div class="flex flex-wrap items-center gap-1">
+      <div v-if="availableAmounts" class="text-xs font-extrabold tabular-nums text-primary sm:text-sm">
+        <span class="mr-1 text-[10px] font-semibold text-muted-foreground">{{ t('products.availableAmounts') }}</span>{{ availableAmounts }}
+      </div>
+      <div v-else class="flex flex-wrap items-center gap-1">
         <!-- Mobile: fulfillment + stock warning -->
         <Badge class="sm:hidden" size="xs" :variant="product.fulfillment_type === 'auto' ? 'info' : 'neutral'">
           {{ getFulfillmentTypeLabel(product.fulfillment_type) }}
@@ -70,7 +73,7 @@
     <!-- Price + Actions (right) -->
     <div class="flex-shrink-0 flex items-center gap-1 sm:gap-3 pr-1.5 sm:pr-4">
       <!-- Price -->
-      <div class="text-right">
+      <div v-if="!availableAmounts && !visuallySoldOut" class="text-right">
         <div v-if="hasPromotionPrice(product)" class="flex flex-col items-end">
           <span class="text-xs sm:text-sm font-bold text-destructive whitespace-nowrap">
             {{ formatPrice(getPromotionPriceAmount(product), siteCurrency) }}
@@ -95,11 +98,23 @@
 
       <!-- Quick buy cart icon -->
       <Button
+        v-if="!purchasingEnabled"
+        type="button"
+        variant="outline"
+        size="icon"
+        class="h-7 w-7 text-slate-600 disabled:opacity-100 dark:text-slate-300 sm:h-8 sm:w-8"
+        :aria-label="t('products.comingSoon')"
+        disabled
+      >
+        <ShoppingCart class="h-4 w-4 text-amber-600 dark:text-amber-300" />
+      </Button>
+      <Button
+        v-else
         type="button"
         variant="outline"
         size="icon"
         class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"
-        :disabled="isSoldOut(product)"
+        :disabled="visuallySoldOut"
         @click.stop="$emit('quickBuy', product)"
       >
         <ShoppingCart class="h-4 w-4" />
@@ -107,12 +122,13 @@
 
       <!-- Arrow -->
       <ChevronRight class="hidden sm:block w-4 h-4 flex-shrink-0 transition-transform text-muted-foreground"
-        :class="isSoldOut(product) ? '' : 'group-hover:translate-x-0.5 group-hover:text-foreground'" />
+        :class="visuallySoldOut ? '' : 'group-hover:translate-x-0.5 group-hover:text-foreground'" />
     </div>
   </Card>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight, Image as ImageIcon, ShoppingCart } from 'lucide-vue-next'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
@@ -121,7 +137,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   product: any
   index?: number
   animationStep?: number
@@ -137,5 +153,13 @@ defineEmits<{
 
 const { t } = useI18n()
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
-const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeVariant, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices } = useProductLabels()
+const {
+  getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeVariant, getStockStatusLabel,
+  isSoldOut, isCatalogPreview, getAvailableAmounts, isPurchasingEnabled,
+  hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices,
+} = useProductLabels()
+
+const visuallySoldOut = computed(() => isSoldOut(props.product) && !isCatalogPreview(props.product))
+const purchasingEnabled = computed(() => isPurchasingEnabled())
+const availableAmounts = computed(() => getAvailableAmounts(props.product))
 </script>

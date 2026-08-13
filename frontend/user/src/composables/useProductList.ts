@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { productAPI, categoryAPI } from '../api'
 import { buildCategoryGroups, createCategoryMap, normalizeCategoryParentId, type PublicCategory } from '../utils/category'
 import { debounceAsync } from '../utils/debounce'
+import { fetchCategoryProductCounts, type CategoryProductCounts } from './useCategoryProductCounts'
 
 export interface UseProductListOptions {
   pageSize?: number
@@ -30,6 +31,8 @@ export function useProductList(options: UseProductListOptions = {}) {
   const totalPages = ref(0)
   const showFilterDrawer = ref(false)
   const expandedParentIds = ref<number[]>([])
+  const categoryProductCounts = ref<CategoryProductCounts>({})
+  const totalProductCount = ref(0)
 
   const categoryGroups = computed(() => buildCategoryGroups(categories.value))
   const categoryMap = computed(() => createCategoryMap(categories.value))
@@ -119,6 +122,16 @@ export function useProductList(options: UseProductListOptions = {}) {
     }
   }
 
+  const loadCategoryProductCounts = async () => {
+    try {
+      const result = await fetchCategoryProductCounts()
+      categoryProductCounts.value = result.counts
+      totalProductCount.value = result.total
+    } catch (error) {
+      console.error('Failed to load category product counts:', error)
+    }
+  }
+
   const debouncedLoadProducts = debounceAsync(loadProducts, 300)
 
   const changePage = (page: number) => {
@@ -193,7 +206,7 @@ export function useProductList(options: UseProductListOptions = {}) {
   )
 
   const initialize = async () => {
-    await loadCategories()
+    await Promise.all([loadCategories(), loadCategoryProductCounts()])
     if (syncSelectedCategoryFromRoute()) {
       syncExpandedCategoryState()
     }
@@ -216,6 +229,8 @@ export function useProductList(options: UseProductListOptions = {}) {
     totalPages,
     showFilterDrawer,
     expandedParentIds,
+    categoryProductCounts,
+    totalProductCount,
     categoryGroups,
     categoryMap,
     isParentExpanded,
@@ -224,6 +239,7 @@ export function useProductList(options: UseProductListOptions = {}) {
     selectCategory,
     loadProducts,
     loadCategories,
+    loadCategoryProductCounts,
     changePage,
     clearSearch,
     onSearch,

@@ -62,11 +62,12 @@
         <ul class="space-y-2">
           <li>
             <button @click="$emit('selectCategory', null, true)"
-              class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border min-h-[44px]"
+              class="flex min-h-[44px] w-full items-center gap-2 rounded-xl border px-4 py-3 text-left transition-all duration-300"
               :class="selectedCategory === null
                 ? 'bg-primary text-primary-foreground border border-transparent'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary'">
-              {{ t('products.allCategories') }}
+              <span class="min-w-0 truncate">{{ t('products.allCategories') }}</span>
+              <span class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ totalProducts }}</span>
             </button>
           </li>
           <li v-for="group in categories" :key="group.id">
@@ -81,6 +82,7 @@
                     :alt="getLocalizedText(group.name)"
                     loading="lazy" class="h-5 w-5 rounded object-cover" />
                   <span class="truncate">{{ getLocalizedText(group.name) }}</span>
+                  <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(group) }}</span>
                 </button>
                 <button
                   v-if="group.children.length > 0"
@@ -104,6 +106,7 @@
                       :alt="getLocalizedText(child.name)"
                       loading="lazy" class="h-5 w-5 rounded object-cover" />
                     <span class="truncate">{{ getLocalizedText(child.name) }}</span>
+                    <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(child) }}</span>
                   </button>
                 </li>
               </ul>
@@ -141,14 +144,15 @@
       <ul :class="compact ? 'space-y-1.5' : 'space-y-2'">
         <li>
           <button @click="$emit('selectCategory', null)"
-            class="w-full text-left rounded-xl transition-all duration-300 border"
+            class="flex w-full items-center gap-2 rounded-xl border text-left transition-all duration-300"
             :class="[
               compact ? 'px-3 py-2.5 text-sm' : 'px-4 py-3',
               selectedCategory === null
                 ? 'bg-primary text-primary-foreground border border-transparent'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary'
             ]">
-            {{ t('products.allCategories') }}
+            <span class="min-w-0 truncate">{{ t('products.allCategories') }}</span>
+            <span class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ totalProducts }}</span>
           </button>
         </li>
         <li v-for="group in categories" :key="group.id">
@@ -167,6 +171,7 @@
                   loading="lazy" :class="compact ? 'h-4 w-4' : 'h-5 w-5'"
                   class="rounded object-cover" />
                 <span class="truncate">{{ getLocalizedText(group.name) }}</span>
+                <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(group) }}</span>
               </button>
               <button
                 v-if="group.children.length > 0"
@@ -201,6 +206,7 @@
                     loading="lazy" :class="compact ? 'h-4 w-4' : 'h-5 w-5'"
                     class="rounded object-cover" />
                   <span class="truncate">{{ getLocalizedText(child.name) }}</span>
+                  <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(child) }}</span>
                 </button>
               </li>
             </ul>
@@ -218,20 +224,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getImageUrl } from '../utils/image'
 import { useLocalized } from '../composables/useProduct'
-import type { CategoryGroup } from '../utils/category'
+import type { CategoryGroup, PublicCategory } from '../utils/category'
 
 const { t } = useI18n()
 const { getLocalizedText } = useLocalized()
 
-defineProps<{
+const props = defineProps<{
   categories: CategoryGroup[]
   selectedCategory: number | null
   expandedParentIds: number[]
   showDrawer: boolean
+  categoryCounts: Record<number, number>
+  totalProducts: number
   compact?: boolean
   showSearch?: boolean
   searchQuery?: string
 }>()
+
+const categoryCount = (category: PublicCategory & { children?: PublicCategory[] }) => {
+  const ownCount = props.categoryCounts[category.id] || 0
+  return ownCount + (category.children || []).reduce((total, child) => total + (props.categoryCounts[child.id] || 0), 0)
+}
 
 defineEmits<{
   'selectCategory': [categoryId: number | null, closeDrawer?: boolean]

@@ -75,14 +75,14 @@
                   {{ getLocalizedText(product.title) }}
                 </h1>
 
-                <div class="mb-6 flex flex-wrap items-center gap-2">
-                  <Badge :variant="product.purchase_type === 'guest' ? 'warning' : 'success'">
+                <div v-if="!catalogPreview" class="mb-6 flex flex-wrap items-center gap-2">
+                  <Badge v-if="canPurchase" :variant="product.purchase_type === 'guest' ? 'warning' : 'success'">
                     <UserPlus v-if="product.purchase_type === 'guest'" class="h-3 w-3" />
                     <Lock v-else class="h-3 w-3" />
                     {{ getPurchaseTypeLabel(product.purchase_type) }}
                   </Badge>
 
-                  <Badge :variant="product.fulfillment_type === 'auto' ? 'info' : 'neutral'">
+                  <Badge v-if="canPurchase" :variant="product.fulfillment_type === 'auto' ? 'info' : 'neutral'">
                     <Zap v-if="product.fulfillment_type === 'auto'" class="h-3 w-3" />
                     <Pencil v-else class="h-3 w-3" />
                     {{ getFulfillmentTypeLabel(product.fulfillment_type) }}
@@ -94,6 +94,14 @@
                 </div>
 
                 <div class="mb-8 border-b pb-8" ref="priceSection">
+                  <div v-if="availableAmounts">
+                    <span class="block text-sm font-semibold uppercase tracking-wide text-muted-foreground">{{ t('products.availableAmounts') }}</span>
+                    <strong class="theme-price-lg mt-1 block text-primary">{{ availableAmounts }}</strong>
+                  </div>
+                  <div v-else-if="product.is_sold_out || product.stock_status === 'out_of_stock'" class="theme-price-lg text-primary">
+                    {{ t('products.stockStatus.outOfStock') }}
+                  </div>
+                  <template v-else>
                   <div class="mb-3 flex flex-wrap items-center gap-2">
                     <span class="text-sm text-muted-foreground">{{ t('products.price') }}</span>
                     <Badge v-if="(selectedSku && hasSkuPromotionPrice(selectedSku)) || (!selectedSku && hasPromotionPrice(product))" variant="danger">
@@ -186,6 +194,7 @@
                       {{ formatPrice(product.price_amount, siteCurrency) }}
                     </span>
                   </div>
+                  </template>
                 </div>
 
                 <!-- 批发价规则展示 -->
@@ -214,7 +223,7 @@
                   </ul>
                 </div>
 
-                <div v-if="activeSkus.length" class="mb-8">
+                <div v-if="canPurchase && activeSkus.length" class="mb-8">
                   <h2 class="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
                     {{ t('productDetail.skuTitle') }}
                   </h2>
@@ -256,7 +265,7 @@
               </div>
 
               <!-- Quantity Selector -->
-                <div class="mb-8">
+                <div v-if="canPurchase" class="mb-8">
                   <h2 class="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
                     {{ t('productDetail.quantity') }}
                   </h2>
@@ -298,14 +307,20 @@
                 </Alert>
 
                 <div class="space-y-3">
-                  <Button v-if="requiresLogin" class="w-full h-12 font-bold" @click="goLogin">
+                  <Button v-if="!purchasingEnabled" class="w-full h-12 font-bold text-slate-200 disabled:opacity-100" :aria-label="t('products.comingSoon')" disabled>
+                    <ShoppingCart class="h-4 w-4 text-amber-300" />
+                  </Button>
+                  <Button v-else-if="!canPurchase" class="w-full h-12 font-bold" disabled>
+                    {{ t('products.stockStatus.outOfStock') }}
+                  </Button>
+                  <Button v-else-if="requiresLogin" class="w-full h-12 font-bold" @click="goLogin">
                     {{ t('productDetail.loginToBuy') }}
                   </Button>
                   <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Button variant="secondary" class="h-12 font-bold" :disabled="!canPurchase" @click="addToCart">
+                    <Button variant="secondary" class="h-12 font-bold" @click="addToCart">
                       {{ t('productDetail.addToCart') }}
                     </Button>
-                    <Button class="h-12 font-bold" :disabled="!canPurchase" @click="buyNow">
+                    <Button class="h-12 font-bold" @click="buyNow">
                       {{ t('productDetail.buyNow') }}
                     </Button>
                   </div>
@@ -374,6 +389,8 @@
           :visible="showMobileBar && !!product && !loading"
           :requires-login="requiresLogin"
           :can-purchase="canPurchase"
+          :purchasing-enabled="purchasingEnabled"
+          :available-amounts="availableAmounts"
           :show-member-price="mobileBarShowMemberPrice"
           :member-price-display="mobileBarMemberPriceDisplay"
           :show-sku-promotion-price="mobileBarShowSkuPromotionPrice"
@@ -413,7 +430,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Lock, Minus, Pencil, Plus, RotateCw, Tag, UserPlus, Zap } from 'lucide-vue-next'
+import { ArrowLeft, Lock, Minus, Pencil, Plus, RotateCw, ShoppingCart, Tag, UserPlus, Zap } from 'lucide-vue-next'
 import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
 import { useProductDetail } from '../composables/useProductDetail'
@@ -464,6 +481,7 @@ const {
   showSelectedSkuMemberBadge,
   isSkuPurchasable, skuDisplayText, skuStockText, skuStockBadgeClass,
   quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
+  catalogPreview, availableAmounts, purchasingEnabled,
   requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
   categoryName, images,
   addToCart, buyNow, goLogin, loadProduct,

@@ -23,8 +23,8 @@
       <section class="grid gap-11 py-2.5 lg:grid-cols-2">
         <!-- 图区 -->
         <div>
-          <div class="relative grid h-[380px] place-items-center overflow-hidden rounded-xl" :class="images.length ? '' : 'bg-[linear-gradient(135deg,#7b74f2,var(--red))]'">
-            <img v-if="currentImage" :src="currentImage" :alt="getLocalizedText(product.title)" class="absolute inset-0 h-full w-full object-cover" />
+          <div class="relative grid h-[380px] place-items-center overflow-hidden rounded-xl" :class="images.length ? 'bg-secondary' : 'bg-[linear-gradient(135deg,#7b74f2,var(--red))]'">
+            <img v-if="currentImage" :src="currentImage" :alt="getLocalizedText(product.title)" class="absolute inset-0 h-full w-full" :class="catalogPreview ? 'object-contain p-8' : 'object-cover'" />
             <Package v-else class="h-[110px] w-[110px] text-white/95" />
           </div>
           <div v-if="images.length > 1" class="mt-3.5 flex flex-wrap gap-3">
@@ -45,13 +45,13 @@
           <span v-if="categoryName" class="block truncate text-[13px] font-semibold text-muted-foreground">{{ categoryName }}</span>
           <h1 class="my-2 mb-3 text-[32px] font-extrabold">{{ getLocalizedText(product.title) }}</h1>
 
-          <div class="mb-1.5 flex flex-wrap gap-2">
+          <div v-if="!catalogPreview" class="mb-1.5 flex flex-wrap gap-2">
             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold" :class="stockPillTone">{{ getStockStatusLabel(product) }}</span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--teal-soft)] px-2.5 py-1 text-[12.5px] font-semibold text-[color:var(--teal-strong)]">
+            <span v-if="canPurchase" class="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--teal-soft)] px-2.5 py-1 text-[12.5px] font-semibold text-[color:var(--teal-strong)]">
               <component :is="product.fulfillment_type === 'auto' ? Zap : Pencil" class="h-3.5 w-3.5" />
               {{ getFulfillmentTypeLabel(product.fulfillment_type) }}
             </span>
-            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold" :class="product.purchase_type === 'guest' ? 'bg-[color:var(--gold-soft)] text-[color:var(--gold-strong)]' : 'bg-[color:var(--teal-soft)] text-[color:var(--teal-strong)]'">
+            <span v-if="canPurchase" class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold" :class="product.purchase_type === 'guest' ? 'bg-[color:var(--gold-soft)] text-[color:var(--gold-strong)]' : 'bg-[color:var(--teal-soft)] text-[color:var(--teal-strong)]'">
               <component :is="product.purchase_type === 'guest' ? UserPlus : Lock" class="h-3.5 w-3.5" />
               {{ getPurchaseTypeLabel(product.purchase_type) }}
             </span>
@@ -63,6 +63,14 @@
 
           <!-- 价格 -->
           <div class="my-5 border-b pb-5">
+            <div v-if="availableAmounts">
+              <span class="block text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">{{ t('products.availableAmounts') }}</span>
+              <strong class="mt-1 block text-[36px] font-extrabold tabular-nums text-primary">{{ availableAmounts }}</strong>
+            </div>
+            <div v-else-if="product.is_sold_out || product.stock_status === 'out_of_stock'" class="text-[40px] font-extrabold text-primary">
+              {{ t('products.stockStatus.outOfStock') }}
+            </div>
+            <template v-else>
             <div class="mb-2.5 flex flex-wrap items-center gap-2">
               <span class="text-[13px] font-semibold text-muted-foreground">{{ t('products.price') }}</span>
               <span v-if="(selectedSku && hasSkuPromotionPrice(selectedSku)) || (!selectedSku && hasPromotionPrice(product))" class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-[12.5px] font-semibold text-primary">{{ t('products.promotionTag') }}</span>
@@ -114,6 +122,7 @@
             <div v-else class="flex flex-wrap items-baseline gap-3">
               <span class="text-[40px] font-extrabold tabular-nums text-primary">{{ formatPrice(product.price_amount, siteCurrency) }}</span>
             </div>
+            </template>
           </div>
 
           <!-- 批发规则 -->
@@ -133,7 +142,7 @@
           </div>
 
           <!-- 规格 -->
-          <div v-if="activeSkus.length" class="my-5">
+          <div v-if="canPurchase && activeSkus.length" class="my-5">
             <div class="mb-2.5 text-[13px] font-bold uppercase tracking-[0.04em] text-muted-foreground">{{ t('productDetail.skuTitle') }}</div>
             <div class="flex flex-wrap gap-2.5">
               <button
@@ -156,7 +165,7 @@
           </div>
 
           <!-- 数量 -->
-          <div class="my-5">
+          <div v-if="canPurchase" class="my-5">
             <div class="mb-2.5 text-[13px] font-bold uppercase tracking-[0.04em] text-muted-foreground">{{ t('productDetail.quantity') }}</div>
             <div class="inline-flex items-center overflow-hidden rounded-full border-2 border-hairline-strong">
               <button type="button" class="grid h-11 w-[42px] place-items-center bg-card text-foreground disabled:opacity-35" :aria-label="t('productDetail.quantity')" :disabled="quantity <= quantityEffectiveMin" @click="quantity = Math.max(quantityEffectiveMin, quantity - 1)"><Minus class="h-[17px] w-[17px]" /></button>
@@ -171,14 +180,16 @@
 
           <!-- 操作 -->
           <div ref="purchaseActionsRef" class="mt-[18px] flex flex-wrap gap-3">
-            <Button v-if="requiresLogin" class="h-12 w-full rounded-full text-[17px] font-bold" @click="goLogin">{{ t('productDetail.loginToBuy') }}</Button>
+            <Button v-if="!purchasingEnabled" class="h-12 w-full rounded-full text-[17px] font-bold text-slate-200 disabled:opacity-100" :aria-label="t('products.comingSoon')" disabled><ShoppingCart class="text-amber-300" /></Button>
+            <Button v-else-if="!canPurchase" class="h-12 w-full rounded-full text-[17px] font-bold" disabled>{{ t('products.stockStatus.outOfStock') }}</Button>
+            <Button v-else-if="requiresLogin" class="h-12 w-full rounded-full text-[17px] font-bold" @click="goLogin">{{ t('productDetail.loginToBuy') }}</Button>
             <template v-else>
-              <Button class="h-12 flex-1 rounded-full text-[17px] font-bold" :disabled="!canPurchase" @click="buyNow"><Zap /> {{ t('productDetail.buyNow') }}</Button>
-              <Button variant="outline" class="h-12 rounded-full text-[17px] font-bold" :disabled="!canPurchase" @click="addToCart"><ShoppingCart /> {{ t('productDetail.addToCart') }}</Button>
+              <Button class="h-12 flex-1 rounded-full text-[17px] font-bold" @click="buyNow"><Zap /> {{ t('productDetail.buyNow') }}</Button>
+              <Button variant="outline" class="h-12 rounded-full text-[17px] font-bold" @click="addToCart"><ShoppingCart /> {{ t('productDetail.addToCart') }}</Button>
             </template>
           </div>
 
-          <div class="mt-4 flex items-center gap-3 rounded-md bg-[color:var(--teal-soft)] px-[18px] py-3.5 text-[color:var(--teal-strong)]">
+          <div v-if="canPurchase" class="mt-4 flex items-center gap-3 rounded-md bg-[color:var(--teal-soft)] px-[18px] py-3.5 text-[color:var(--teal-strong)]">
             <TicketCheck class="h-[22px] w-[22px] flex-none" />
             <span class="text-sm font-semibold">{{ t('productDetail.deliveryReassurance') }}</span>
           </div>
@@ -218,6 +229,8 @@
         :visible="showMobileBar && !!product && !loading"
         :requires-login="requiresLogin"
         :can-purchase="canPurchase"
+        :purchasing-enabled="purchasingEnabled"
+        :available-amounts="availableAmounts"
         :show-member-price="mobileBarShowMemberPrice"
         :member-price-display="mobileBarMemberPriceDisplay"
         :show-sku-promotion-price="mobileBarShowSkuPromotionPrice"
@@ -293,6 +306,7 @@ const {
   showSelectedSkuMemberBadge,
   isSkuPurchasable, skuDisplayText, skuStockText,
   quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
+  catalogPreview, availableAmounts, purchasingEnabled,
   requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
   categoryName, images,
   addToCart, buyNow, goLogin, loadProduct,

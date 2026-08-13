@@ -107,7 +107,11 @@
 
                 <!-- Price -->
                 <div class="mt-auto pt-1">
-                  <template v-if="selectedSku && hasSelectedSkuWholesalePrice">
+                  <template v-if="availableAmounts">
+                    <span class="block text-[11px] font-semibold text-muted-foreground">{{ t('products.availableAmounts') }}</span>
+                    <strong class="text-lg font-extrabold tabular-nums text-primary md:text-xl">{{ availableAmounts }}</strong>
+                  </template>
+                  <template v-else-if="selectedSku && hasSelectedSkuWholesalePrice">
                     <span
                       class="text-lg md:text-xl font-bold"
                       :class="selectedSkuWholesaleFinalIsMember ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-400'"
@@ -286,7 +290,15 @@
           <!-- Actions (sticky bottom) -->
           <div class="shrink-0 px-4 md:px-5 pt-3 pb-3 md:pb-5 border-t theme-safe-bottom">
             <Button
-              v-if="requiresLogin"
+              v-if="!purchasingEnabled"
+              class="w-full py-3 h-auto min-h-[44px] rounded-xl text-sm font-semibold text-slate-200 disabled:opacity-100"
+              :aria-label="t('products.comingSoon')"
+              disabled
+            >
+              <ShoppingCart class="w-4 h-4 text-amber-300" />
+            </Button>
+            <Button
+              v-else-if="requiresLogin"
               class="w-full py-3 h-auto min-h-[44px] rounded-xl text-sm font-semibold"
               @click="goLogin"
             >
@@ -369,6 +381,8 @@ const {
   getStockBadgeVariant,
   getStockStatusLabel,
   isSoldOut,
+  getAvailableAmounts,
+  isPurchasingEnabled,
   hasPromotionPrice,
   getPromotionPriceAmount,
   hasSkuPromotionPrice,
@@ -386,6 +400,8 @@ const purchaseWarning = ref('')
 
 const productTitle = computed(() => getLocalizedText(props.product?.title))
 const productDescription = computed(() => getLocalizedText(props.product?.description))
+const availableAmounts = computed(() => getAvailableAmounts(props.product))
+const purchasingEnabled = computed(() => isPurchasingEnabled())
 
 const formatPromotionRule = (rule: any) => {
   const amount = formatPrice(rule.min_amount, siteCurrency.value)
@@ -663,6 +679,7 @@ const stockBelowMinPurchase = computed(() => {
 })
 const canPurchase = computed(() => {
   if (!props.product) return false
+  if (!purchasingEnabled.value) return false
   if (activeSkus.value.length === 0) return false
   if (props.product.is_sold_out) return false
   if (requiresSKUSelection.value) return false

@@ -33,6 +33,7 @@ export function useLocalized() {
 
 export function useProductLabels() {
   const { t } = useI18n()
+  const appStore = useAppStore()
 
   const getPurchaseTypeLabel = (purchaseType: string) => {
     return purchaseType === 'guest' ? t('productPurchase.guest') : t('productPurchase.member')
@@ -74,6 +75,12 @@ export function useProductLabels() {
   }
 
   const isSoldOut = (product: any) => Boolean(product?.is_sold_out || product?.stock_status === 'out_of_stock')
+
+  const isCatalogPreview = (product: any) => product?.seo_meta?.catalog_preview === true
+
+  const getAvailableAmounts = (product: any) => String(product?.seo_meta?.available_amounts || '').trim()
+
+  const isPurchasingEnabled = () => appStore.config?.purchasing_enabled !== false
 
   const parsePriceAmount = (amount: any) => amountToCents(amount)
 
@@ -200,6 +207,9 @@ export function useProductLabels() {
     getStockBadgeVariant,
     getStockStatusLabel,
     isSoldOut,
+    isCatalogPreview,
+    getAvailableAmounts,
+    isPurchasingEnabled,
     hasPromotionPrice,
     getPromotionPriceAmount,
     getPromotionSaveAmount,

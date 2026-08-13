@@ -1,0 +1,20 @@
+[Unit]
+Description=US Gift Card Hub (Dujiao-Next)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=usgiftcardhub
+Group=usgiftcardhub
+WorkingDirectory=/opt/usgiftcardhub
+ExecStart=/opt/usgiftcardhub/usgiftcardhub -mode api
+Restart=on-failure
+RestartSec=3s
+LimitNOFILE=65535
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

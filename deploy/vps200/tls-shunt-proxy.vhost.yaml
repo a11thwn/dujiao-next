@@ -1,0 +1,11 @@
+# Merge this item into the existing tls-shunt-proxy `vhosts` list.
+# Keep other VPS routes unchanged.
+- name: usgiftcardhub.com
+  tlsoffloading: true
+  managedcert: true
+  keytype: p256
+  alpn: http/1.1
+  protocols: tls12,tls13
+  http:
+    handler: proxyPass
+    args: 127.0.0.1:8080

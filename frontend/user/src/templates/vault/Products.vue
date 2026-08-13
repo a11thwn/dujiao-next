@@ -27,6 +27,8 @@
           :category-groups="categoryGroups"
           :selected-category="selectedCategory"
           :expanded-parent-ids="expandedParentIds"
+          :category-counts="categoryProductCounts"
+          :total-products="totalProductCount"
           @select="selectCategory"
           @toggle="toggleParentCategory"
         />
@@ -113,6 +115,8 @@ const {
   totalPages,
   expandedParentIds,
   categoryGroups,
+  categoryProductCounts,
+  totalProductCount,
   categoryMap,
   selectCategory,
   toggleParentCategory,

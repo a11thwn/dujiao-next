@@ -14,14 +14,17 @@
       <div class="flex items-center gap-3 px-4 py-3">
         <!-- 价格 -->
         <div class="min-w-0 flex-1">
-          <span v-if="showMemberPrice" class="block truncate text-xl font-extrabold tabular-nums text-[color:var(--gold-strong)]">{{ memberPriceDisplay }}</span>
+          <span v-if="availableAmounts" class="block truncate text-xl font-extrabold tabular-nums text-primary">{{ availableAmounts }}</span>
+          <span v-else-if="showMemberPrice" class="block truncate text-xl font-extrabold tabular-nums text-[color:var(--gold-strong)]">{{ memberPriceDisplay }}</span>
           <span v-else-if="showSkuPromotionPrice" class="block truncate text-xl font-extrabold tabular-nums text-primary">{{ skuPromotionPriceDisplay }}</span>
           <span v-else-if="showSkuPrice" class="block truncate text-xl font-extrabold tabular-nums text-primary">{{ skuPriceDisplay }}</span>
           <span v-else-if="showProductPromotionPrice" class="block truncate text-xl font-extrabold tabular-nums text-primary">{{ productPromotionPriceDisplay }}</span>
           <span v-else class="block truncate text-xl font-extrabold tabular-nums text-primary">{{ productPriceDisplay }}</span>
         </div>
         <!-- 操作 -->
-        <Button v-if="requiresLogin" size="lg" class="flex-none rounded-full font-bold" @click="$emit('goLogin')">{{ t('productDetail.loginToBuy') }}</Button>
+        <Button v-if="!purchasingEnabled" size="lg" class="flex-none rounded-full font-bold text-slate-200 disabled:opacity-100" :aria-label="t('products.comingSoon')" disabled><ShoppingCart class="text-amber-300" /></Button>
+        <Button v-else-if="!canPurchase" size="lg" class="flex-none rounded-full font-bold" disabled>{{ t('products.stockStatus.outOfStock') }}</Button>
+        <Button v-else-if="requiresLogin" size="lg" class="flex-none rounded-full font-bold" @click="$emit('goLogin')">{{ t('productDetail.loginToBuy') }}</Button>
         <template v-else>
           <Button variant="outline" size="lg" class="flex-none rounded-full font-bold" :disabled="!canPurchase" @click="$emit('addToCart')">
             <ShoppingCart /> {{ t('productDetail.addToCart') }}
@@ -46,6 +49,8 @@ defineProps<{
   visible: boolean
   requiresLogin: boolean
   canPurchase: boolean
+  purchasingEnabled: boolean
+  availableAmounts: string
   showMemberPrice: boolean
   memberPriceDisplay: string
   showSkuPromotionPrice: boolean

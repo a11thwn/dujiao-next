@@ -14,6 +14,8 @@
           :categories="categoryGroups"
           :selected-category="selectedCategory"
           :expanded-parent-ids="expandedParentIds"
+          :category-counts="categoryProductCounts"
+          :total-products="totalProductCount"
           :show-drawer="showFilterDrawer"
           :show-search="true"
           :search-query="searchQuery"
@@ -125,6 +127,8 @@ const {
   showFilterDrawer,
   expandedParentIds,
   categoryGroups,
+  categoryProductCounts,
+  totalProductCount,
   categoryMap,
   selectCategory,
   toggleParentCategory,

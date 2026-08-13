@@ -9,13 +9,14 @@
       <div class="flex gap-1.5 overflow-x-auto pb-0.5 lg:grid lg:gap-1 lg:overflow-visible lg:pb-0">
         <button
           type="button"
-          class="flex-none whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition-colors lg:w-full lg:rounded-lg lg:px-3 lg:py-2.5 lg:text-left"
+          class="flex flex-none items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition-colors lg:w-full lg:rounded-lg lg:px-3 lg:py-2.5 lg:text-left"
           :class="selectedCategory === null
             ? 'bg-primary text-white lg:bg-primary/10 lg:text-primary'
             : 'bg-secondary text-muted-foreground hover:text-foreground lg:bg-transparent lg:hover:bg-secondary'"
           @click="$emit('select', null)"
         >
-          {{ t('products.allCategories') }}
+          <span class="min-w-0 truncate">{{ t('products.allCategories') }}</span>
+          <span class="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ totalProducts }}</span>
         </button>
         <template v-for="grp in categoryGroups" :key="grp.id">
           <div class="flex flex-none items-center gap-0.5 lg:w-full lg:min-w-0">
@@ -29,6 +30,7 @@
             >
               <img v-if="grp.icon" :src="getImageUrl(grp.icon)" :alt="catName(grp)" loading="lazy" class="h-5 w-5 flex-none rounded-md object-cover" />
               <span class="min-w-0 truncate">{{ catName(grp) }}</span>
+              <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(grp) }}</span>
             </button>
             <button
               v-if="grp.children.length"
@@ -47,11 +49,12 @@
               v-for="child in grp.children"
               :key="child.id"
               type="button"
-              class="hidden w-full min-w-0 truncate rounded-lg py-2 pl-9 pr-3 text-left text-[13.5px] font-semibold transition-colors lg:block"
+              class="hidden w-full min-w-0 items-center gap-2 rounded-lg py-2 pl-9 pr-3 text-left text-[13.5px] font-semibold transition-colors lg:flex"
               :class="selectedCategory === child.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'"
               @click="$emit('select', child.id)"
             >
-              {{ catName(child) }}
+              <span class="min-w-0 truncate">{{ catName(child) }}</span>
+              <span class="ml-auto inline-flex min-w-6 flex-none items-center justify-center rounded-full bg-black/10 px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums dark:bg-white/10">{{ categoryCount(child) }}</span>
             </button>
           </template>
         </template>
@@ -67,10 +70,12 @@ import { getImageUrl } from '../../../utils/image'
 import { useLocalized } from '../../../composables/useProduct'
 import type { PublicCategory } from '../../../utils/category'
 
-defineProps<{
+const props = defineProps<{
   categoryGroups: (PublicCategory & { children: PublicCategory[] })[]
   selectedCategory: number | null
   expandedParentIds: number[]
+  categoryCounts: Record<number, number>
+  totalProducts: number
 }>()
 
 defineEmits<{ select: [id: number | null]; toggle: [id: number] }>()
@@ -78,4 +83,8 @@ defineEmits<{ select: [id: number | null]; toggle: [id: number] }>()
 const { t } = useI18n()
 const { getLocalizedText } = useLocalized()
 const catName = (cat: PublicCategory) => getLocalizedText(cat.name) || cat.slug || ''
+const categoryCount = (cat: PublicCategory & { children?: PublicCategory[] }) => {
+  const ownCount = props.categoryCounts[cat.id] || 0
+  return ownCount + (cat.children || []).reduce((total, child) => total + (props.categoryCounts[child.id] || 0), 0)
+}
 </script>

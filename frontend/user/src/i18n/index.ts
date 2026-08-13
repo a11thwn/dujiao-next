@@ -1,42 +1,39 @@
 import { createI18n } from 'vue-i18n'
 // 默认语言（兜底语言）静态打包，其余语言按需动态加载
-import zhCN from './locales/zh-CN.json'
+import enUS from './locales/en-US.json'
 
 const supportedLocales = ['zh-CN', 'zh-TW', 'en-US']
+const defaultLocale = 'en-US'
+const defaultLocaleVersion = 'usgiftcardhub-en-default-v1'
 
 // 非默认语言的懒加载器：切换语言时才下载对应语言包 chunk
 const localeLoaders: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {
+    'zh-CN': () => import('./locales/zh-CN.json'),
     'zh-TW': () => import('./locales/zh-TW.json'),
-    'en-US': () => import('./locales/en-US.json'),
 }
 
-const loadedLocales = new Set(['zh-CN'])
+const loadedLocales = new Set([defaultLocale])
 
 export function detectLocale(): string {
+    // Apply the English-first storefront default once to existing local
+    // browsers, then continue respecting any explicit language selection.
+    if (localStorage.getItem('locale-default-version') !== defaultLocaleVersion) {
+        localStorage.setItem('locale-default-version', defaultLocaleVersion)
+        localStorage.setItem('locale', defaultLocale)
+        return defaultLocale
+    }
+
     const saved = localStorage.getItem('locale')
     if (saved && supportedLocales.includes(saved)) return saved
-
-    const browserLang = navigator.language || ''
-    if (supportedLocales.includes(browserLang)) return browserLang
-
-    const langPrefix = browserLang.split('-')[0]
-    if (langPrefix === 'zh') {
-        if (browserLang.includes('TW') || browserLang.includes('HK') || browserLang.includes('Hant')) {
-            return 'zh-TW'
-        }
-        return 'zh-CN'
-    }
-    if (langPrefix === 'en') return 'en-US'
-
-    return 'zh-CN'
+    return defaultLocale
 }
 
 const i18n = createI18n({
     legacy: false,
-    locale: 'zh-CN',
-    fallbackLocale: 'zh-CN',
-    // 键断言为 string，避免 locale 类型被收窄为 "zh-CN" 字面量（其余语言在运行时动态注入）
-    messages: { 'zh-CN': zhCN } as Record<string, typeof zhCN>,
+    locale: defaultLocale,
+    fallbackLocale: defaultLocale,
+    // 键断言为 string，避免 locale 类型被收窄为 "en-US" 字面量（其余语言在运行时动态注入）
+    messages: { 'en-US': enUS } as Record<string, typeof enUS>,
 })
 
 async function loadLocaleMessages(locale: string): Promise<void> {

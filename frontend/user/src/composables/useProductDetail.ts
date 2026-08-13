@@ -36,6 +36,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
   const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
   const {
     getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeVariant, getStockStatusLabel,
+    isCatalogPreview, getAvailableAmounts, isPurchasingEnabled,
     hasPromotionPrice, getPromotionPriceAmount, getPromotionSaveAmount,
     hasSkuPromotionPrice, getSkuPromotionPriceAmount, getSkuPromotionSaveAmount,
     hasPromotionRules, getPromotionRules, hasWholesalePrices, getWholesalePrices,
@@ -300,6 +301,9 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
   }
 
   const purchaseType = computed(() => product.value?.purchase_type || 'member')
+  const catalogPreview = computed(() => isCatalogPreview(product.value))
+  const availableAmounts = computed(() => getAvailableAmounts(product.value))
+  const purchasingEnabled = computed(() => isPurchasingEnabled())
   const requiresLogin = computed(() => purchaseType.value === 'member' && !userAuthStore.isAuthenticated)
   const requiresSKUSelection = computed(() => activeSkus.value.length > 1 && !selectedSku.value)
   const stockBelowMinPurchase = computed(() => {
@@ -309,6 +313,7 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
   })
   const canPurchase = computed(() => {
     if (!product.value) return false
+    if (!purchasingEnabled.value) return false
     if (activeSkus.value.length === 0) return false
     if (product.value.is_sold_out) return false
     if (requiresSKUSelection.value) return false
@@ -319,7 +324,9 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
   })
   const cannotPurchaseReason = computed(() => {
     if (!product.value) return ''
+    if (!purchasingEnabled.value) return ''
     if (requiresLogin.value) return ''
+    if (product.value.is_sold_out || product.value.stock_status === 'out_of_stock') return t('productDetail.stockUnavailable')
     if (requiresSKUSelection.value) return t('productDetail.skuRequired')
     if (stockBelowMinPurchase.value) return t('productDetail.stockBelowMinPurchase', { count: quantityEffectiveMin.value })
     if (canPurchase.value) return ''
@@ -687,7 +694,8 @@ export function useProductDetail(options: { onLoaded?: () => void } = {}) {
     isSkuPurchasable, skuDisplayText, skuStockText, skuStockBadgeClass,
     quantityEffectiveLimit, quantityEffectiveMin, handleQuantityInput,
     // 购买能力
-    purchaseType, requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
+    purchaseType, catalogPreview, availableAmounts, purchasingEnabled,
+    requiresLogin, requiresSKUSelection, canPurchase, cannotPurchaseReason,
     categoryName, images,
     // 动作
     addToCart, buyNow, goLogin, loadProduct,

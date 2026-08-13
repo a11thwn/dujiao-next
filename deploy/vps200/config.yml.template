@@ -1,0 +1,65 @@
+app:
+  secret_key: __APP_SECRET__
+  totp_issuer: USGiftCardHub
+
+server:
+  host: 127.0.0.1
+  port: 8080
+  mode: release
+  trusted_proxies:
+    - 127.0.0.1/32
+    - ::1/128
+
+log:
+  dir: ./logs
+  filename: app.log
+  max_size_mb: 100
+  max_backups: 7
+  max_age_days: 30
+  compress: true
+
+database:
+  driver: sqlite
+  dsn: ./db/dujiao.db
+  pool:
+    max_open_conns: 1
+    max_idle_conns: 1
+    conn_max_lifetime_seconds: 0
+    conn_max_idle_time_seconds: 0
+
+jwt:
+  secret: __JWT_SECRET__
+  expire_hours: 24
+
+user_jwt:
+  secret: __USER_JWT_SECRET__
+  expire_hours: 24
+  remember_me_expire_hours: 168
+
+bootstrap:
+  default_admin_username: ""
+  default_admin_password: ""
+
+redis:
+  enabled: false
+
+queue:
+  enabled: false
+
+email:
+  enabled: false
+
+cors:
+  allowed_origins:
+    - https://usgiftcardhub.com
+    - https://www.usgiftcardhub.com
+  allow_credentials: true
+
+reseller:
+  enabled: false
+  main_hosts:
+    - usgiftcardhub.com
+    - www.usgiftcardhub.com
+
+web:
+  admin_path: __ADMIN_PATH__

@@ -2,7 +2,7 @@
   <RouterLink
     :to="`/products/${product.slug}`"
     class="group flex items-center gap-3 rounded-lg border bg-card p-2.5 transition hover:border-hairline-strong hover:shadow-[var(--shadow-sm)] sm:gap-3.5 sm:p-3"
-    :class="{ 'opacity-[0.74]': soldOut }"
+    :class="{ 'opacity-[0.74]': visuallySoldOut }"
   >
     <!-- Thumbnail -->
     <span
@@ -11,7 +11,7 @@
     >
       <img v-if="coverImage" :src="coverImage" :alt="title" loading="lazy" class="absolute inset-0 h-full w-full object-cover" @error="imageErrored = true" />
       <Package v-else class="relative z-[1] h-6 w-6 text-white" />
-      <span v-if="soldOut" class="absolute inset-0 grid place-items-center bg-black/55 text-[10px] font-bold text-white">{{ t('products.stockStatus.outOfStock') }}</span>
+      <span v-if="visuallySoldOut" class="absolute inset-0 grid place-items-center bg-black/55 text-[10px] font-bold text-white">{{ t('products.stockStatus.outOfStock') }}</span>
     </span>
 
     <!-- Info -->
@@ -21,7 +21,10 @@
         <span v-if="categoryName" class="hidden flex-none text-muted-foreground/40 sm:inline">·</span>
         <h3 class="truncate text-sm font-bold text-foreground">{{ title }}</h3>
       </div>
-      <span class="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="stockPill.tone">
+      <span v-if="availableAmounts" class="text-sm font-extrabold tabular-nums text-primary">
+        <span class="mr-1 text-[11px] font-semibold text-muted-foreground">{{ t('products.availableAmounts') }}</span>{{ availableAmounts }}
+      </span>
+      <span v-else class="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="stockPill.tone">
         <component :is="stockPill.icon" class="h-3 w-3" />
         {{ stockPill.label }}
       </span>
@@ -29,15 +32,18 @@
 
     <!-- Price + actions -->
     <div class="flex flex-none items-center gap-2 sm:gap-3">
-      <div class="text-right">
+      <div v-if="!availableAmounts && !visuallySoldOut" class="text-right">
         <template v-if="promo">
           <span class="block text-sm font-extrabold tabular-nums text-primary sm:text-base">{{ formatPrice(getPromotionPriceAmount(product), siteCurrency) }}</span>
           <span class="block text-[11px] font-semibold text-muted-foreground line-through">{{ formatPrice(product.price_amount, siteCurrency) }}</span>
         </template>
         <span v-else class="block text-sm font-extrabold tabular-nums text-foreground sm:text-base">{{ formatPrice(product.price_amount, siteCurrency) }}</span>
       </div>
+      <span v-if="!purchasingEnabled" class="inline-grid h-9 w-9 flex-none place-items-center rounded-full border-2 border-primary/30 bg-primary/5 text-slate-600 dark:text-slate-300" aria-disabled="true" :aria-label="t('products.comingSoon')">
+        <ShoppingCart class="h-4 w-4 text-amber-600 dark:text-amber-300" />
+      </span>
       <button
-        v-if="!soldOut"
+        v-else-if="!visuallySoldOut"
         type="button"
         class="grid h-9 w-9 flex-none place-items-center rounded-full bg-primary text-white transition hover:bg-primary/90"
         :aria-label="t('products.quickBuyAria')"
@@ -63,7 +69,10 @@ defineEmits<{ quickBuy: [product: any] }>()
 
 const { t } = useI18n()
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
-const { getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount } = useProductLabels()
+const {
+  getStockStatusLabel, isSoldOut, isCatalogPreview, getAvailableAmounts, isPurchasingEnabled,
+  hasPromotionPrice, getPromotionPriceAmount,
+} = useProductLabels()
 
 const covers = [
   'bg-[linear-gradient(135deg,#7b74f2,var(--red))]',
@@ -77,6 +86,9 @@ const coverClass = computed(() => covers[(props.index ?? 0) % covers.length])
 const title = computed(() => getLocalizedText(props.product?.title))
 const categoryName = computed(() => getLocalizedText(props.product?.category?.name))
 const soldOut = computed(() => isSoldOut(props.product))
+const visuallySoldOut = computed(() => soldOut.value && !isCatalogPreview(props.product))
+const purchasingEnabled = computed(() => isPurchasingEnabled())
+const availableAmounts = computed(() => getAvailableAmounts(props.product))
 const promo = computed(() => hasPromotionPrice(props.product))
 
 const imageErrored = ref(false)
