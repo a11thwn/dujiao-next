@@ -1,7 +1,7 @@
 export type ResellerLocale = 'zh-CN' | 'zh-TW' | 'en-US'
 export type LocalizedText = Record<ResellerLocale, string>
 
-export const resellerLocales: ResellerLocale[] = ['zh-CN', 'zh-TW', 'en-US']
+export const resellerLocales: ResellerLocale[] = ['en-US']
 
 export const blankLocalizedText = (): LocalizedText => ({
     'zh-CN': '',

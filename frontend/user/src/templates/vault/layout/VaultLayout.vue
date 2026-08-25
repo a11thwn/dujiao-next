@@ -38,7 +38,7 @@
           </RouterLink>
 
           <!-- 语言切换 -->
-          <div class="relative max-[900px]:hidden" ref="langEl">
+          <div v-if="languages.length > 1" class="relative max-[900px]:hidden" ref="langEl">
             <button class="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary" type="button" :aria-label="t('navbar.selectLanguage')" @click="toggleLang">
               <Languages class="h-[18px] w-[18px]" />
             </button>
@@ -73,11 +73,13 @@
               <RouterLink v-if="userAuthStore.isAuthenticated" to="/me" class="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" @click="moreOpen = false">{{ t('navbar.personalCenter') }}</RouterLink>
               <RouterLink v-else to="/auth/login" class="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" @click="moreOpen = false">{{ t('navbar.login') }}</RouterLink>
               <button v-if="userAuthStore.isAuthenticated" class="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" @click="userAuthStore.logout(); moreOpen = false">{{ t('navbar.logout') }}</button>
-              <span class="px-3 pb-0.5 pt-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{{ t('navbar.selectLanguage') }}</span>
-              <button v-for="lang in languages" :key="`ml-${lang.code}`" class="flex w-full items-center justify-between gap-2.5 rounded-sm px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-secondary hover:text-foreground" :class="appStore.locale === lang.code ? 'text-primary' : 'text-muted-foreground'" @click="changeLanguage(lang.code); moreOpen = false">
-                {{ lang.name }}
-                <span v-if="appStore.locale === lang.code" class="h-[7px] w-[7px] rounded-full bg-primary"></span>
-              </button>
+              <template v-if="languages.length > 1">
+                <span class="px-3 pb-0.5 pt-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{{ t('navbar.selectLanguage') }}</span>
+                <button v-for="lang in languages" :key="`ml-${lang.code}`" class="flex w-full items-center justify-between gap-2.5 rounded-sm px-3 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-secondary hover:text-foreground" :class="appStore.locale === lang.code ? 'text-primary' : 'text-muted-foreground'" @click="changeLanguage(lang.code); moreOpen = false">
+                  {{ lang.name }}
+                  <span v-if="appStore.locale === lang.code" class="h-[7px] w-[7px] rounded-full bg-primary"></span>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -128,7 +130,7 @@
             <span>Dujiao-Next</span>
           </a>
         </div>
-        <span>简体中文 · 繁體 · English</span>
+        <span>English</span>
       </div>
     </footer>
   </div>
@@ -181,7 +183,7 @@ const brandLogo = computed(() => {
 const brandDescription = computed(() => {
   const desc = appStore.config?.brand?.site_description
   if (desc && typeof desc === 'object') {
-    const val = (desc as Record<string, string>)[appStore.locale] || (desc as Record<string, string>)['zh-CN'] || ''
+    const val = (desc as Record<string, string>)[appStore.locale] || (desc as Record<string, string>)['en-US'] || ''
     return typeof val === 'string' ? val.trim() : ''
   }
   return ''
@@ -217,8 +219,6 @@ const contact = computed(() => appStore.config?.contact as { telegram?: string; 
 const cartCount = computed(() => cartStore.totalItems)
 
 const languages = [
-  { code: 'zh-CN', name: '简体中文' },
-  { code: 'zh-TW', name: '繁體中文' },
   { code: 'en-US', name: 'English' },
 ]
 

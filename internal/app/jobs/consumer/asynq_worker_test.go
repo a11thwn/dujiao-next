@@ -13,6 +13,8 @@ import (
 	"github.com/dujiao-next/internal/constants"
 	notificationcontract "github.com/dujiao-next/internal/modules/notification/contract"
 	notificationsmtp "github.com/dujiao-next/internal/modules/notification/infrastructure/smtp"
+	settingsapp "github.com/dujiao-next/internal/modules/settings/application"
+	settingsmessaging "github.com/dujiao-next/internal/modules/settings/schema/messaging"
 	"github.com/dujiao-next/internal/queue"
 	"github.com/dujiao-next/internal/shared/jsonmap"
 	"github.com/dujiao-next/internal/shared/mailbrand"
@@ -149,6 +151,21 @@ func TestBuildOrderFulfillmentEmailPayloadPreferOrderFulfillment(t *testing.T) {
 type orderStatusEmailWorkerOrderRepoStub struct {
 	order *orderdomain.Order
 	err   error
+}
+
+type orderStatusEmailWorkerSettingRepoStub struct {
+	value jsonmap.JSON
+}
+
+func (s orderStatusEmailWorkerSettingRepoStub) GetByKey(key string) (jsonmap.JSON, bool, error) {
+	if key != constants.SettingKeySMTPConfig {
+		return nil, false, nil
+	}
+	return s.value, true, nil
+}
+
+func (s orderStatusEmailWorkerSettingRepoStub) Upsert(_ string, value jsonmap.JSON) (jsonmap.JSON, error) {
+	return value, nil
 }
 
 func (s orderStatusEmailWorkerOrderRepoStub) GetByID(_ uint) (*orderdomain.Order, error) {
@@ -308,6 +325,54 @@ func TestHandleOrderStatusEmailSkipsNonRetryableEmailErrors(t *testing.T) {
 				t.Fatalf("expected generic retryable error, got %v", err)
 			}
 		})
+	}
+}
+
+func TestHandleOrderStatusEmailUsesLatestDatabaseSMTPSetting(t *testing.T) {
+	order := &orderdomain.Order{
+		ID:          108,
+		OrderNo:     "DJ-ORDER-108",
+		GuestEmail:  "buyer@example.com",
+		GuestLocale: "zh-CN",
+		Currency:    "CNY",
+	}
+	task, err := queue.NewOrderStatusEmailTask(queue.OrderStatusEmailPayload{
+		OrderID: order.ID,
+		Status:  constants.OrderStatusCompleted,
+	})
+	if err != nil {
+		t.Fatalf("new order status email task failed: %v", err)
+	}
+
+	// 模拟 worker 启动时 SMTP 关闭，后台随后把数据库 SMTP 设置为开启。
+	// 最新设置指向必然连接失败的本地端口：若 handler 使用它，应返回可重试错误；
+	// 若错误地使用启动时的旧发送器，则会把“邮件服务关闭”静默跳过并返回 nil。
+	latestSetting := settingsmessaging.NormalizeSMTPSetting(settingsmessaging.SMTPSetting{
+		Enabled:                  true,
+		Host:                     "127.0.0.1",
+		Port:                     1,
+		From:                     "sender@example.com",
+		OrderNotificationEnabled: true,
+	})
+	settingService := settingsapp.NewService(orderStatusEmailWorkerSettingRepoStub{
+		value: settingsmessaging.EncodeSMTPSetting(latestSetting),
+	})
+	startupEmailConfig := config.EmailConfig{Enabled: false}
+	consumer := &Consumer{
+		Container: &container.Container{
+			Config:         &config.Config{Email: startupEmailConfig},
+			SettingService: settingService,
+			EmailSender:    notificationsmtp.New(&startupEmailConfig),
+		},
+		orderReader: orderStatusEmailWorkerOrderRepoStub{order: order},
+	}
+
+	err = consumer.handleOrderStatusEmail(context.Background(), task)
+	if err == nil {
+		t.Fatal("expected latest enabled SMTP setting to be used, got nil from stale disabled sender")
+	}
+	if errors.Is(err, notificationcontract.ErrEmailServiceDisabled) {
+		t.Fatalf("expected database SMTP setting instead of stale startup setting, got %v", err)
 	}
 }
 

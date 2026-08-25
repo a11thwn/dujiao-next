@@ -411,12 +411,12 @@ const loading = ref(true)
 const saving = ref(false)
 const alert = ref<PageAlert | null>(null)
 const snapshot = ref<ResellerSiteConfigSnapshotData | null>(null)
-const activeLocale = ref<ResellerLocale>('zh-CN')
+const activeLocale = ref<ResellerLocale>('en-US')
 const activeSection = ref('brand')
 const baseline = ref('')
 const builtinNavKeys = ['blog', 'notice', 'about']
 
-const localeLabels: Record<string, string> = { 'zh-CN': '简体', 'zh-TW': '繁體', 'en-US': 'EN' }
+const localeLabels: Record<string, string> = { 'en-US': 'EN' }
 
 type SiteConfigSection = {
     value: 'brand' | 'support' | 'content' | 'navigation'

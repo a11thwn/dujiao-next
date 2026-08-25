@@ -1,5 +1,6 @@
 import i18n from '../i18n'
 import { isPublicAuthEndpoint } from '../utils/authEndpoints'
+import { fetchWithGetRetry } from './requestRetry'
 
 export const t = (key: string, params?: Record<string, any>) =>
     (params ? i18n.global.t(key, params) : i18n.global.t(key)) as string
@@ -59,7 +60,6 @@ function getHttpErrorMessage(status: number): string {
 
 function createClient(injectAuth: boolean) {
     const baseURL = `${API_BASE_URL}${API_PREFIX}`
-    const timeout = 10000
 
     async function request(method: string, path: string, bodyOrOptions?: any, options?: RequestOptions): Promise<{ data: any }> {
         let body: any = undefined
@@ -91,18 +91,14 @@ function createClient(injectAuth: boolean) {
             headers['Content-Type'] = 'application/json'
         }
 
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), timeout)
-
         let response: Response
         try {
-            response = await fetch(url, {
+            response = await fetchWithGetRetry(url, {
                 method,
                 headers,
                 body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
                 credentials: opts.credentials,
-                signal: controller.signal,
-            })
+            }, { method })
         } catch (err: any) {
             if (err.name === 'AbortError') {
                 const message = t('common.api.networkError')
@@ -112,8 +108,6 @@ function createClient(injectAuth: boolean) {
             const message = t('common.api.networkError')
             console.error('Network Error:', message)
             return Promise.reject(new Error(message))
-        } finally {
-            clearTimeout(timer)
         }
 
         // Blob response

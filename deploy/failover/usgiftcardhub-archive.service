@@ -5,6 +5,7 @@ After=usgiftcardhub-snapshot.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/usgiftcardhub-primary-snapshot --snapshot --push --archive
+ExecStart=/usr/local/sbin/usgiftcardhub-rclone-upload
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7

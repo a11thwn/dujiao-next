@@ -7,9 +7,14 @@ import {
   isResellerSiteSeoConfigured,
   normalizeFooterLinksForForm,
   canEditResellerSiteConfig,
+  resellerLocales,
 } from '../src/utils/resellerSiteConfig.ts'
 
-test('blank localized text includes all supported storefront locales', () => {
+test('reseller storefront exposes only the English editing locale', () => {
+  assert.deepEqual(resellerLocales, ['en-US'])
+})
+
+test('blank localized text preserves the three-locale storage schema', () => {
   assert.deepEqual(blankLocalizedText(), { 'zh-CN': '', 'zh-TW': '', 'en-US': '' })
 })
 

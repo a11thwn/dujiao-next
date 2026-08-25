@@ -1,5 +1,6 @@
 [Unit]
 Description=US Gift Card Hub (Dujiao-Next)
+# Fresh catalog bootstrap unit only; current production uses separate API and Worker units.
 After=network-online.target
 Wants=network-online.target
 

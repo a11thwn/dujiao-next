@@ -2,6 +2,7 @@ import i18n from '@/i18n'
 import type { ApiResponse } from './types'
 import { notifyError } from '@/utils/notify'
 import { adminUrl } from '@/utils/adminBase'
+import { fetchWithGetRetry } from './requestRetry'
 
 export type { ApiResponse }
 
@@ -66,7 +67,6 @@ function getHttpErrorMessage(status: number): string {
 }
 
 const baseURL = `${API_BASE_URL}${API_PREFIX}`
-const timeout = 10000
 
 function responseHeadersToObject(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {}
@@ -117,24 +117,17 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
     headers['Content-Type'] = 'application/json'
   }
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeout)
-
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await fetchWithGetRetry(url, {
       method,
       headers,
       body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    })
+    }, { method })
   } catch (err: any) {
-    clearTimeout(timer)
     const message = t('common.api.networkError')
     notifyError(message)
     return Promise.reject(createNotifiedError(message))
-  } finally {
-    clearTimeout(timer)
   }
 
   // Blob response

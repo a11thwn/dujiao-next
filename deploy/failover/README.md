@@ -4,15 +4,20 @@
 
 - 主站：VPS200，API、Worker、Redis 为唯一运行写节点。
 - 温备：VPS201、VPS228，保存完整应用、SQLite、Redis、配置、systemd 与 TLS 恢复材料。
-- 异地归档：Google Drive `USGiftCardHub Backups`，只保存 AES-256-CBC 加密归档及校验文件。
+- 三台服务器已加入同一 Tailscale 网络；VPS200 通过 Tailscale IP 向两台温备执行 rsync，公网 SSH 仅作为人工应急入口。
+- 异地归档：通过 VPS200 rclone 的 `gdbaby:USGiftCardHub Backups` 上传，只保存 AES-256-CBC 加密归档及校验文件。
 - 备份密钥不进入仓库或 Google Drive；主站、两台温备和本机各保存一份，权限为 `0600`。
+- rclone 配置从现有受控运维节点复制到 VPS200 后保持 `0600`；账号信息与 OAuth token 不进入日志或仓库。
 
 ## 自动任务
 
 - VPS200 的 `usgiftcardhub-snapshot.timer` 每 15 分钟生成一致性 SQLite/Redis 快照并增量推送到两台温备。
 - VPS201、VPS228 的 `usgiftcardhub-replica-apply.timer` 每 5 分钟校验并应用完整快照。
-- VPS200 的 `usgiftcardhub-archive.timer` 每天 19:10 UTC（北京时间次日 03:10）生成加密完整归档，服务器保留 14 天。
-- Codex 自动任务每天北京时间 03:40 拉取、验包并上传 Google Drive；失败时通知。
+- VPS200 的 `usgiftcardhub-archive.timer` 每天 19:10 UTC（北京时间次日 03:10）生成加密完整归档，随后用 rclone 上传 Google Drive；服务器保留 14 天。
+- rclone 上传完成后执行 Drive 端哈希/大小核验；上传失败会令 systemd 任务失败并保留本地归档供下次重试。
+- `usgiftcardhub-rclone-upload.timer` 每小时幂等重试最新归档，缓解 rclone 公共 OAuth client 的 Google Drive API 分钟级配额拥塞。
+
+副本同步地址保存在主站权限为 `0600` 的目标文件中，不提交具体 Tailscale IP。Tailscale 节点不接受 tailnet DNS 或子网路由，也不启用 Tailscale SSH；原有公网、Cloudflare 和 `tls-shunt-proxy` 路径不变。
 
 正常 standby 状态必须满足：
 
@@ -96,7 +101,7 @@ sudo /usr/local/sbin/usgiftcardhub-restore-encrypted-archive \
 ## 日常核验
 
 ```bash
-systemctl list-timers usgiftcardhub-snapshot.timer usgiftcardhub-archive.timer
+systemctl list-timers usgiftcardhub-snapshot.timer usgiftcardhub-archive.timer usgiftcardhub-rclone-upload.timer
 cat /var/lib/usgiftcardhub-replica/current/READY
 
 ssh vps201 'cat /var/lib/usgiftcardhub-replica/applied-snapshot; systemctl is-active usgiftcardhub.service usgiftcardhub-worker.service redis-server.service'

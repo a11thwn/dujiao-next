@@ -38,13 +38,11 @@ const paymentChannels = ref<AdminPaymentChannel[]>([])
 const editingIsMapped = ref(false)
 const initialCategoryID = ref<number | null>(null)
 const newTag = ref('')
-const currentLang = ref('zh-CN')
+const currentLang = ref('en-US')
 
 const languages = computed(() => [
-  { code: 'zh-CN', name: t('admin.common.lang.zhCN') },
-  { code: 'zh-TW', name: t('admin.common.lang.zhTW') },
   { code: 'en-US', name: t('admin.common.lang.enUS') },
-])
+].filter((item) => props.supportedLocales.includes(item.code)))
 
 const categoryMap = computed(() => createAdminCategoryMap(props.categories))
 const categoryChildCountMap = computed(() => createAdminCategoryChildCountMap(props.categories))
@@ -198,7 +196,7 @@ const togglePaymentChannel = (channelId: number) => {
 }
 
 const getCurrentLangName = () => {
-  return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.zhCN')
+  return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.enUS')
 }
 
 const emptyI18nString = () => ({ 'zh-CN': '', 'zh-TW': '', 'en-US': '' })
@@ -208,7 +206,7 @@ const normalizeSeoMeta = (raw: Record<string, LocalizedText> | null | undefined)
   const normalize = (val: string | LocalizedText | null | undefined) => {
     if (!val) return emptyI18nString()
     if (typeof val === 'string') {
-      return { 'zh-CN': val, 'zh-TW': '', 'en-US': '' }
+      return { 'zh-CN': '', 'zh-TW': '', 'en-US': val }
     }
     if (typeof val === 'object') {
       return { 'zh-CN': val['zh-CN'] || '', 'zh-TW': val['zh-TW'] || '', 'en-US': val['en-US'] || '' }
@@ -658,7 +656,7 @@ watch(
   () => props.productId,
   async (newId) => {
     if (!props.modelValue) return
-    currentLang.value = 'zh-CN'
+    currentLang.value = 'en-US'
     if (newId != null && newId > 0) {
       // Edit mode
       isEditing.value = true
@@ -686,7 +684,7 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (!newVal) return
-    currentLang.value = 'zh-CN'
+    currentLang.value = 'en-US'
     if (paymentChannels.value.length === 0) {
       loadPaymentChannels()
     }

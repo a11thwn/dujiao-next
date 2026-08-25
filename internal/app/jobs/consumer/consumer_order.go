@@ -18,6 +18,7 @@ import (
 	"github.com/dujiao-next/internal/htmltext"
 	"github.com/dujiao-next/internal/logger"
 	notificationcontract "github.com/dujiao-next/internal/modules/notification/contract"
+	notificationsmtp "github.com/dujiao-next/internal/modules/notification/infrastructure/smtp"
 	settingsmessaging "github.com/dujiao-next/internal/modules/settings/schema/messaging"
 	walletcontract "github.com/dujiao-next/internal/modules/wallet/contract"
 	"github.com/dujiao-next/internal/queue"
@@ -50,7 +51,10 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 		logger.Debugw("worker_order_status_email_skip_canceled", "order_id", payload.OrderID)
 		return nil
 	}
+	emailSender := c.EmailSender
 	// 消费侧二次校验开关：避免 SMTP/订单通知关闭后，旧任务（含 retry/scheduled 中的任务）继续触发发送。
+	// API 与 worker 是独立进程，后台保存 SMTP 设置时只能热更新 API 进程内存。
+	// worker 必须为每个任务使用数据库中的最新设置，不能继续使用启动时的 EmailSender。
 	if c.SettingService != nil && c.Config != nil {
 		smtpSetting, smtpErr := c.SettingService.GetSMTPSetting(c.Config.Email)
 		if smtpErr != nil {
@@ -66,6 +70,8 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 			)
 			return nil
 		}
+		runtimeEmailConfig := settingsmessaging.SMTPSettingToConfig(smtpSetting)
+		emailSender = notificationsmtp.New(&runtimeEmailConfig)
 	}
 	if c.orderReader == nil {
 		return fmt.Errorf("order reader unavailable")
@@ -114,7 +120,7 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 		logger.Debugw("worker_order_status_email_skip_placeholder_receiver", "order_id", order.ID, "order_no", order.OrderNo)
 		return nil
 	}
-	if c.EmailSender == nil {
+	if emailSender == nil {
 		logger.Warnw("worker_order_status_email_skip_email_service_nil", "order_id", order.ID, "order_no", order.OrderNo)
 		return nil
 	}
@@ -164,7 +170,7 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 	if status == constants.OrderStatusDelivered || status == constants.OrderStatusCompleted {
 		input.Instructions = buildOrderInstructionsEmailText(order, locale)
 	}
-	if err := c.EmailSender.SendOrderStatusEmailWithTemplate(receiverEmail, input, locale, tmplSetting); err != nil {
+	if err := emailSender.SendOrderStatusEmailWithTemplate(receiverEmail, input, locale, tmplSetting); err != nil {
 		switch {
 		case errors.Is(err, notificationcontract.ErrEmailServiceDisabled):
 			logger.Debugw("worker_order_status_email_skip_email_disabled",

@@ -1,3 +1,5 @@
+# Fresh catalog bootstrap template only.
+# Do not apply this file to an existing installation or use it as an upgrade config.
 app:
   secret_key: __APP_SECRET__
   totp_issuer: USGiftCardHub

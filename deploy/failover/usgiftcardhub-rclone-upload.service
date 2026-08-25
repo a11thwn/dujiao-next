@@ -1,0 +1,11 @@
+[Unit]
+Description=Upload the latest encrypted USGiftCardHub archive with rclone
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/usgiftcardhub-rclone-upload
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

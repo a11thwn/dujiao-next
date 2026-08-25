@@ -22,7 +22,7 @@ import ProductEditModal from './components/ProductEditModal.vue'
 import { buildAdminCategoryPath, createAdminCategoryMap, createAdminCategoryChildCountMap, flattenAdminCategories, isAdminProductCategorySelectable } from '@/utils/category'
 import { formatWholesaleTierScopeLabel, wholesaleTierScopeValue } from '@/utils/wholesalePricing'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const loading = ref(false)
 const searchQuery = ref('')
 const stockStatus = ref('all')
@@ -129,7 +129,7 @@ const formatWholesaleSummary = (product: AdminProduct) => {
       const scope = formatWholesaleTierScopeLabel(
         product,
         tier,
-        String(locale.value || 'zh-CN'),
+        'en-US',
         t('admin.wholesalePrices.modal.skuAll'),
       )
       return `${scope} ≥${Number(tier.min_quantity || 0)} ${formatPrice(tier.unit_price, siteCurrency.value)}`
@@ -757,7 +757,7 @@ watch(
       :product-id="editingProductId"
       :categories="orderedCategories"
       :site-currency="siteCurrency"
-      :supported-locales="['zh-CN', 'zh-TW', 'en-US']"
+      :supported-locales="['en-US']"
       @success="handleModalSuccess"
     />
   </div>

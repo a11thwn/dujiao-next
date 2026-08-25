@@ -2,15 +2,13 @@ import { createI18n } from 'vue-i18n'
 // 默认语言（兜底语言）静态打包，其余语言按需动态加载
 import enUS from './locales/en-US.json'
 
-const supportedLocales = ['zh-CN', 'zh-TW', 'en-US']
+const supportedLocales = ['en-US']
 const defaultLocale = 'en-US'
-const defaultLocaleVersion = 'usgiftcardhub-en-default-v1'
+const defaultLocaleVersion = 'usgiftcardhub-en-only-v2'
 
-// 非默认语言的懒加载器：切换语言时才下载对应语言包 chunk
-const localeLoaders: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {
-    'zh-CN': () => import('./locales/zh-CN.json'),
-    'zh-TW': () => import('./locales/zh-TW.json'),
-}
+// Storefront is English-only. Keep this map empty so Chinese language packs
+// are not exposed as runtime-switchable UI options or emitted chunks.
+const localeLoaders: Record<string, () => Promise<{ default: Record<string, unknown> }>> = {}
 
 const loadedLocales = new Set([defaultLocale])
 

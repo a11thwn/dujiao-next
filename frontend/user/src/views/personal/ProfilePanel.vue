@@ -33,8 +33,6 @@
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="zh-CN">简体中文</SelectItem>
-              <SelectItem value="zh-TW">繁體中文</SelectItem>
               <SelectItem value="en-US">English</SelectItem>
             </SelectContent>
           </Select>
@@ -70,7 +68,7 @@ const userProfileStore = useUserProfileStore()
 
 const profileForm = reactive({
   nickname: '',
-  locale: 'zh-CN',
+  locale: 'en-US',
 })
 
 const profileAlert = ref<PageAlert | null>(null)
@@ -100,7 +98,7 @@ watch(
   (profile) => {
     if (!profile) return
     profileForm.nickname = profile.nickname || ''
-    profileForm.locale = profile.locale || 'zh-CN'
+    profileForm.locale = 'en-US'
   },
   { immediate: true }
 )

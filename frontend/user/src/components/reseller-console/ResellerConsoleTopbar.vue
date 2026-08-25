@@ -45,7 +45,7 @@
         </Button>
 
         <!-- Language switcher -->
-        <Popover v-model:open="langOpen">
+        <Popover v-if="languages.length > 1" v-model:open="langOpen">
           <PopoverTrigger as-child>
             <Button type="button" variant="ghost" size="sm" class="gap-1.5 px-2.5">
               <Languages class="h-4 w-4" />
@@ -215,15 +215,12 @@ const drawerOpen = ref(false)
 const langOpen = ref(false)
 
 const languages = [
-  { code: 'zh-CN', name: '简体中文' },
-  { code: 'zh-TW', name: '繁體中文' },
   { code: 'en-US', name: 'English' },
 ]
 
 const currentLocaleLabel = computed(() => {
   if (appStore.locale === 'en-US') return 'EN'
-  if (appStore.locale === 'zh-TW') return '繁'
-  return '简'
+  return 'EN'
 })
 
 const brandSiteName = computed(() => {

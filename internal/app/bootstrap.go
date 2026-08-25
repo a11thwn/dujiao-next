@@ -5,6 +5,7 @@ import (
 
 	"github.com/dujiao-next/internal/app/container"
 	"github.com/dujiao-next/internal/app/httpserver"
+	httpservermiddleware "github.com/dujiao-next/internal/app/httpserver/middleware"
 	"github.com/dujiao-next/internal/app/jobs"
 	jobconsumer "github.com/dujiao-next/internal/app/jobs/consumer"
 	"github.com/dujiao-next/internal/config"
@@ -27,7 +28,8 @@ func BuildRunner(cfg *config.Config, mode string) (*Runner, error) {
 	if mode == ModeAll || mode == ModeAPI {
 		engine := httpserver.SetupRouter(cfg, dependencies)
 		addr := cfg.Server.Host + ":" + cfg.Server.Port
-		httpService := NewHTTPService(addr, engine)
+		handler := httpservermiddleware.SecurityHeadersHandler(cfg.Server.Mode, engine)
+		httpService := NewHTTPService(addr, handler)
 		services = append(services, httpService)
 	}
 
