@@ -17,6 +17,12 @@ import TableSkeleton from '@/components/TableSkeleton.vue'
 import { useListRefresh, type ListFetchOptions } from '@/composables/useListRefresh'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDate, getLocalizedText } from '@/utils/format'
+import {
+  buildCardSecretSkuLabel,
+  buildCardSecretSkuLabelCatalog,
+  mergeCardSecretProductCatalog,
+  resolveCardSecretSkuLabel,
+} from '@/utils/cardSecretDisplay'
 import { confirmAction } from '@/utils/confirm'
 import CardSecretEditModal from './components/CardSecretEditModal.vue'
 import { adminUrl } from '@/utils/adminBase'
@@ -27,6 +33,7 @@ const pageSizeOptions = [10, 20, 50, 100, 200]
 
 const productKeyword = ref('')
 const productOptions = ref<AdminProduct[]>([])
+const productCatalog = ref<Map<number, AdminProduct>>(new Map())
 const productOptionsLoading = ref(false)
 const selectedProductValue = ref('__all__')
 const productInfo = ref<AdminProduct | null>(null)
@@ -86,32 +93,6 @@ const parseSkuId = () => {
   return Math.floor(parsed)
 }
 
-const formatSkuSpecValues = (specValues: Record<string, string> | null | undefined) => {
-  if (!specValues || typeof specValues !== 'object' || Array.isArray(specValues)) return ''
-  return Object.entries(specValues as Record<string, string>)
-    .map(([key, value]) => {
-      const keyText = String(key || '').trim()
-      const valueText = Array.isArray(value)
-        ? value.map((entry) => String(entry || '').trim()).filter(Boolean).join(', ')
-        : String(value ?? '').trim()
-      if (!valueText) return ''
-      if (!keyText) return valueText
-      return `${keyText}:${valueText}`
-    })
-    .filter(Boolean)
-    .join(' / ')
-}
-
-const buildSkuLabel = (sku: AdminProductSKU | null | undefined) => {
-  const skuCode = String(sku?.sku_code || '').trim()
-  const specText = formatSkuSpecValues(sku?.spec_values)
-  if (skuCode && specText) return `${skuCode} · ${specText}`
-  if (skuCode) return skuCode
-  if (specText) return specText
-  if (sku?.id) return `#${sku.id}`
-  return '-'
-}
-
 const buildProductLabel = (product: AdminProduct | null | undefined) => {
   const id = Number(product?.id || 0)
   const name = getLocalizedText(product?.title || {})
@@ -122,6 +103,7 @@ const buildProductLabel = (product: AdminProduct | null | undefined) => {
 
 const currentProductId = computed(() => parseProductId())
 const currentSkuId = computed(() => parseSkuId())
+const skuLabelCatalog = computed(() => buildCardSecretSkuLabelCatalog(productCatalog.value.values()))
 const currentBatchId = computed(() => {
   const raw = Number(currentBatchFilter.value?.id || 0)
   if (!Number.isFinite(raw) || raw <= 0) return 0
@@ -147,7 +129,7 @@ const availableSkus = computed(() => {
     .map((sku: AdminProductSKU) => ({
       ...sku,
       id: Number(sku.id),
-      label: buildSkuLabel(sku),
+      label: buildCardSecretSkuLabel(sku),
     }))
     .filter((sku: AdminProductSKU & { label: string }) => Number.isFinite(sku.id) && sku.id > 0)
 })
@@ -181,19 +163,16 @@ const syncSkuSelection = () => {
   }
 }
 
-const resolveSkuLabelById = (skuID: number) => {
-  if (!skuID) return '-'
-  const target = availableSkus.value.find((sku) => sku.id === skuID)
-  if (!target) return `#${skuID}`
-  return target.label
-}
+const resolveSkuLabelById = (skuID: number, productID = currentProductId.value || 0) => (
+  resolveCardSecretSkuLabel(skuLabelCatalog.value, productID, skuID)
+)
 
 const resolveProductName = (productId: number) => {
   if (!productId) return ''
   if (productInfo.value && Number(productInfo.value.id || 0) === productId) {
     return getLocalizedText(productInfo.value.title)
   }
-  const option = productOptions.value.find((item: AdminProduct) => Number(item?.id || 0) === productId)
+  const option = productCatalog.value.get(productId)
   if (!option) return ''
   return getLocalizedText(option.title || {})
 }
@@ -311,6 +290,10 @@ const findBatchById = (batchID: number) => {
   return batches.value.find((batch: AdminCardSecretBatch) => Number(batch?.id || 0) === batchID) || null
 }
 
+const cacheProductMetadata = (products: AdminProduct[]) => {
+  productCatalog.value = mergeCardSecretProductCatalog(productCatalog.value, products)
+}
+
 const loadProductOptions = async () => {
   productOptionsLoading.value = true
   try {
@@ -338,6 +321,7 @@ const loadProductOptions = async () => {
       if (!dedup.has(id)) dedup.set(id, item)
     })
 
+    cacheProductMetadata(rows)
     const options = Array.from(dedup.values())
     if (
       currentProductId.value &&
@@ -376,6 +360,7 @@ const loadProductInfo = async () => {
   try {
     const response = await adminAPI.getProduct(productId)
     productInfo.value = response.data.data
+    cacheProductMetadata([response.data.data])
     if (!productOptions.value.some((item: AdminProduct) => Number(item?.id || 0) === productId)) {
       productOptions.value.unshift(response.data.data)
     }
@@ -725,8 +710,8 @@ const cardSecretStatusClass = (status: string) => {
   }
 }
 
-const batchSkuLabel = (batch: AdminCardSecretBatch) => resolveSkuLabelById(Number(batch?.sku_id || 0))
-const secretSkuLabel = (secret: AdminCardSecret) => resolveSkuLabelById(Number(secret?.sku_id || 0))
+const batchSkuLabel = (batch: AdminCardSecretBatch) => resolveSkuLabelById(Number(batch?.sku_id || 0), Number(batch?.product_id || 0))
+const secretSkuLabel = (secret: AdminCardSecret) => resolveSkuLabelById(Number(secret?.sku_id || 0), Number(secret?.product_id || 0))
 
 onMounted(async () => {
   await loadProductOptions()
