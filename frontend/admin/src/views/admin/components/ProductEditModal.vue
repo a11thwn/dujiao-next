@@ -111,8 +111,6 @@ type ManualFormField = {
 }
 
 const createEmptyLocaleText = () => ({
-  'zh-CN': '',
-  'zh-TW': '',
   'en-US': '',
 })
 
@@ -138,12 +136,12 @@ const createSKUFormItem = (raw?: Partial<AdminProductSKU>): SKUFormItem => ({
 
 const form = reactive({
   id: 0,
-  title: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
+  title: { 'en-US': '' } as LocalizedText,
   slug: '',
-  seo_meta: { keywords: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' }, description: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } } as { keywords: LocalizedText; description: LocalizedText; [key: string]: LocalizedText },
-  description: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
-  content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
-  instructions: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
+  seo_meta: { keywords: { 'en-US': '' }, description: { 'en-US': '' } } as { keywords: LocalizedText; description: LocalizedText; [key: string]: LocalizedText },
+  description: { 'en-US': '' } as LocalizedText,
+  content: { 'en-US': '' } as LocalizedText,
+  instructions: { 'en-US': '' } as LocalizedText,
   price_amount: 0,
   cost_price_amount: 0,
   images: [] as string[],
@@ -199,17 +197,17 @@ const getCurrentLangName = () => {
   return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.enUS')
 }
 
-const emptyI18nString = () => ({ 'zh-CN': '', 'zh-TW': '', 'en-US': '' })
+const emptyI18nString = () => ({ 'en-US': '' })
 
 const normalizeSeoMeta = (raw: Record<string, LocalizedText> | null | undefined) => {
   if (!raw) return { keywords: emptyI18nString(), description: emptyI18nString() }
   const normalize = (val: string | LocalizedText | null | undefined) => {
     if (!val) return emptyI18nString()
     if (typeof val === 'string') {
-      return { 'zh-CN': '', 'zh-TW': '', 'en-US': val }
+      return { 'en-US': val }
     }
     if (typeof val === 'object') {
-      return { 'zh-CN': val['zh-CN'] || '', 'zh-TW': val['zh-TW'] || '', 'en-US': val['en-US'] || '' }
+      return { 'en-US': val['en-US'] || '' }
     }
     return emptyI18nString()
   }
@@ -291,7 +289,7 @@ const stockDisplayModeOptions = computed(() => [
 const normalizeLocaleText = (value: unknown) => {
   const result: Record<string, string> = {}
   const obj = (value && typeof value === 'object' ? value : {}) as Record<string, string>
-  for (const code of ['zh-CN', 'zh-TW', 'en-US']) {
+  for (const code of ['en-US']) {
     const text = String(obj[code] || '').trim()
     if (text) {
       result[code] = text
@@ -306,12 +304,10 @@ const normalizeSpecValues = (value: unknown) => {
     return result
   }
   const obj = value as Record<string, unknown>
-  Object.keys(obj).forEach((key) => {
-    const text = String(obj[key] ?? '').trim()
-    if (text) {
-      result[key] = text
-    }
-  })
+  const text = String(obj['en-US'] ?? '').trim()
+  if (text) {
+    result['en-US'] = text
+  }
   return result
 }
 
@@ -480,12 +476,12 @@ const resetForm = () => {
   initialCategoryID.value = null
   Object.assign(form, {
     id: 0,
-    title: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
+    title: { 'en-US': '' },
     slug: '',
-    seo_meta: { keywords: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' }, description: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } },
-    description: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
-    content: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
-    instructions: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
+    seo_meta: { keywords: { 'en-US': '' }, description: { 'en-US': '' } },
+    description: { 'en-US': '' },
+    content: { 'en-US': '' },
+    instructions: { 'en-US': '' },
     price_amount: 0,
     cost_price_amount: 0,
     images: [],
@@ -528,12 +524,12 @@ const populateForm = (product: AdminProduct) => {
 
   Object.assign(form, {
     id: product.id,
-    title: product.title || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
+    title: product.title || { 'en-US': '' },
     slug: product.slug,
     seo_meta: normalizeSeoMeta(product.seo_meta),
-    description: product.description || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
-    content: product.content || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
-    instructions: (product as AdminProduct & { instructions?: LocalizedText }).instructions || { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
+    description: product.description || { 'en-US': '' },
+    content: product.content || { 'en-US': '' },
+    instructions: (product as AdminProduct & { instructions?: LocalizedText }).instructions || { 'en-US': '' },
     price_amount: Number(product.price_amount || 0),
     cost_price_amount: Number(product.cost_price_amount || 0),
     images: imagesList,
@@ -602,11 +598,15 @@ const handleSubmit = async () => {
     const payload = {
       slug: String(form.slug || '').trim(),
       category_id: Math.floor(normalizedCategoryID),
-      seo_meta: form.seo_meta,
-      title: form.title,
-      description: form.description,
-      content: form.content,
-      instructions: form.instructions,
+      seo_meta: {
+        ...form.seo_meta,
+        keywords: normalizeLocaleText(form.seo_meta.keywords),
+        description: normalizeLocaleText(form.seo_meta.description),
+      },
+      title: normalizeLocaleText(form.title),
+      description: normalizeLocaleText(form.description),
+      content: normalizeLocaleText(form.content),
+      instructions: normalizeLocaleText(form.instructions),
       price_amount: effectivePrice,
       cost_price_amount: effectiveCostPrice,
       images: form.images,

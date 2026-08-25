@@ -24,20 +24,18 @@ const loading = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
 const categories = ref<AdminCategory[]>([])
-const currentLang = ref('zh-CN')
+const currentLang = ref('en-US')
 const route = useRoute()
 const submitting = ref(false)
 
 const languages = computed(() => [
-  { code: 'zh-CN', name: t('admin.common.lang.zhCN') },
-  { code: 'zh-TW', name: t('admin.common.lang.zhTW') },
   { code: 'en-US', name: t('admin.common.lang.enUS') },
 ])
 
 const form = reactive({
   id: 0,
   parent_id: 0,
-  name: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' } as LocalizedText,
+  name: { 'en-US': '' } as LocalizedText,
   slug: '',
   icon: '',
   sort_order: 0,
@@ -82,7 +80,7 @@ const { errors, validate, clearErrors } = useFormValidation({
 })
 
 const getCurrentLangName = () => {
-  return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.zhCN')
+  return languages.value.find((item) => item.code === currentLang.value)?.name || t('admin.common.lang.enUS')
 }
 
 const fetchCategories = async () => {
@@ -99,12 +97,12 @@ const fetchCategories = async () => {
 
 const openCreateModal = () => {
   isEditing.value = false
-  currentLang.value = 'zh-CN'
+  currentLang.value = 'en-US'
   clearErrors()
   Object.assign(form, {
     id: 0,
     parent_id: 0,
-    name: { 'zh-CN': '', 'zh-TW': '', 'en-US': '' },
+    name: { 'en-US': '' },
     slug: '',
     icon: '',
     sort_order: 0,
@@ -114,9 +112,9 @@ const openCreateModal = () => {
 
 const openEditModal = (category: AdminCategory) => {
   isEditing.value = true
-  currentLang.value = 'zh-CN'
+  currentLang.value = 'en-US'
 
-  const defaultName = { 'zh-CN': '', 'zh-TW': '', 'en-US': '' }
+  const defaultName = { 'en-US': '' }
   const name = { ...defaultName, ...(category.name || {}) }
 
   Object.assign(form, {
@@ -136,10 +134,13 @@ const closeModal = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validate({ slug: form.slug, name: form.name['zh-CN'] } as Record<string, unknown>)) return
+  if (!validate({ slug: form.slug, name: form.name['en-US'] } as Record<string, unknown>)) return
   submitting.value = true
   try {
-    const payload = { ...form }
+    const payload = {
+      ...form,
+      name: { 'en-US': String(form.name['en-US'] || '').trim() },
+    }
     if (isEditing.value) {
       await adminAPI.updateCategory(form.id, payload)
     } else {

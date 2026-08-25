@@ -25,9 +25,7 @@ if (!username || !password) {
   process.exit(1)
 }
 
-const localized = (zhCN, zhTW, enUS) => ({
-  'zh-CN': zhCN,
-  'zh-TW': zhTW,
+const localized = (_zhCN, _zhTW, enUS) => ({
   'en-US': enUS,
 })
 
@@ -122,7 +120,7 @@ await updateSetting('site_config', {
   },
   scripts: [],
   footer_links: [],
-  languages: ['en-US', 'zh-CN', 'zh-TW'],
+  languages: ['en-US'],
   currency: 'USD',
   template_mode: 'card',
   storefront_template: 'vault',
