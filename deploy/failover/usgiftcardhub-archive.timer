@@ -1,0 +1,10 @@
+[Unit]
+Description=Create a daily encrypted USGiftCardHub backup archive
+
+[Timer]
+OnCalendar=*-*-* 19:10:00 UTC
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Apply the latest USGiftCardHub replica snapshot while in standby mode
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/usgiftcardhub-standby-apply
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

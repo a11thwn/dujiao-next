@@ -4,6 +4,49 @@
 
 ---
 
+## [2026-08-25] - 建立双 VPS 温备与 Google Drive 异地备份
+
+### 问题描述
+
+- US Gift Card Hub 仅部署在 VPS200，主机或站点故障时缺少可直接接管的完整副本。
+- SQLite、Redis 队列、应用配置、上传文件、服务单元和 TLS 恢复材料没有统一的一致性备份流程。
+- 生产数据尚未形成经过加密与恢复验证的 Google Drive 异地归档。
+
+### 分析原因
+
+- 普通目录复制无法保证 WAL 模式 SQLite 与 Redis 队列处于一致可恢复状态。
+- 同时运行多个 Worker 会造成重复发信、重复消费或订单状态分叉，因此备用机不能作为并行写节点常驻运行。
+- 大文件通过 Google Drive 连接器中转时存在超时限制，需要保留浏览器上传与元数据回读的备用路径。
+
+### 解决方案
+
+- 将 VPS201、VPS228 建成单主写入架构下的温备节点，完整保存应用、SQLite、Redis、配置、systemd 和 TLS 材料。
+- VPS200 每 15 分钟生成 SQLite 在线备份与 Redis RDB，并通过受限的非 root 同步账号增量发送到两台温备。
+- 温备每 5 分钟校验并应用完整快照，API、Worker、Redis 默认保持停止，接管时才按顺序启动并验证 HTTPS。
+- 每日生成 AES-256-CBC + PBKDF2 加密归档，上传 Google Drive 后按文件名和字节数回读验证；备份密钥不进入仓库或 Drive。
+
+### 改动内容
+
+- 新增 `deploy/failover/primary-snapshot.sh`：一致性快照、双机推送、加密归档、解密验包和本地轮转。
+- 新增 `standby-apply.sh`、`standby-activate.sh`、`standby-deactivate.sh`：副本应用、单写确认接管、隔离演练与撤回。
+- 新增 `restore-encrypted-archive.sh`：整包 SHA-256、归档路径、内部文件校验与停止状态恢复。
+- 新增主站快照/归档和温备应用的 systemd service/timer，共 6 个单元文件。
+- 新增 `deploy/failover/README.md`，记录拓扑、接管、撤回、演练、Drive 恢复和日常核验命令。
+- 已在 VPS201、VPS228 完成数据库/二进制/TLS 哈希核对和隔离 HTTPS 接管演练；VPS201 另完成一次加密归档恢复演练。
+- 已创建 Google Drive `USGiftCardHub Backups` 目录，首份加密归档大小为 `59,819,504` 字节，并配置每日上传自动任务。
+
+### 影响范围
+
+- VPS200 继续作为唯一生产写节点；现有 API、Worker、Redis 与公网流量保持不变。
+- VPS201、VPS228 可通过一条接管命令启动，当前 DNS 切换仍需在 Cloudflare 手动完成，避免误判造成双主。
+- 快照目标 RPO 约 20 分钟以内；实际 RTO 取决于接管检查和 Cloudflare DNS 切换。
+- 服务器加密归档保留 14 天，温备 SQLite 回滚点最多保留 16 个。
+
+### 后续计划
+
+- 持续检查每日 Google Drive 自动任务和三台主机快照编号是否一致。
+- 定期执行隔离接管与 Drive 归档恢复演练，确认新增数据与路由仍被完整覆盖。
+
 ## [2026-08-25] - 配置商品运营账号的生产后台权限
 
 ### 问题描述

@@ -1,0 +1,11 @@
+[Unit]
+Description=Build and replicate a consistent USGiftCardHub standby snapshot
+After=network-online.target usgiftcardhub.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/usgiftcardhub-primary-snapshot --snapshot --push
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
