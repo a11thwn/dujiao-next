@@ -10,6 +10,7 @@ target_file=/etc/usgiftcardhub-backup/targets
 ssh_key=/root/.ssh/usgiftcardhub-replica-ed25519
 backup_key=/root/.config/usgiftcardhub-backup/backup.key
 lock_file=/run/lock/usgiftcardhub-replica.lock
+local_archive_retention_minutes=2880
 
 usage() {
   echo "usage: $0 [--snapshot] [--push] [--archive]" >&2
@@ -212,7 +213,12 @@ create_archive() {
   (cd "$archive_dir" && sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
   cp "$current_dir/MANIFEST" "$archive.manifest"
   chmod 0600 "$archive.manifest" "$archive.sha256"
-  find "$archive_dir" -maxdepth 1 -type f -mtime +14 -delete
+  # Hourly archives are retained locally for 48 hours. Google Drive keeps the
+  # uploaded history, while this bound prevents 14 days of hourly archives from
+  # exhausting the production filesystem.
+  find "$archive_dir" -maxdepth 1 -type f \
+    -name 'usgiftcardhub-full-*' \
+    -mmin "+$local_archive_retention_minutes" -delete
   echo "archive=$archive"
 }
 

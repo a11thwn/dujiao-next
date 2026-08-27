@@ -1,5 +1,7 @@
 # USGiftCardHub 容灾与备份
 
+故障接管、Cloudflare 切换、公网验收和回切步骤见 [`FAILOVER_RUNBOOK.md`](./FAILOVER_RUNBOOK.md)。
+
 ## 当前拓扑
 
 - 主站：VPS200，API、Worker、Redis 为唯一运行写节点。
@@ -11,11 +13,13 @@
 
 ## 自动任务
 
-- VPS200 的 `usgiftcardhub-snapshot.timer` 每 15 分钟生成一致性 SQLite/Redis 快照并增量推送到两台温备。
+- VPS200 的 `usgiftcardhub-snapshot.timer` 每 5 分钟生成一致性 SQLite/Redis 快照并增量推送到两台温备。
 - VPS201、VPS228 的 `usgiftcardhub-replica-apply.timer` 每 5 分钟校验并应用完整快照。
-- VPS200 的 `usgiftcardhub-archive.timer` 每天 19:10 UTC（北京时间次日 03:10）生成加密完整归档，随后用 rclone 上传 Google Drive；服务器保留 14 天。
+- VPS200 的 `usgiftcardhub-archive.timer` 每小时 10 分（UTC）生成加密完整归档，随后用 rclone 上传 Google Drive；服务器滚动保留最近 48 小时，Drive 保留已上传历史。
 - rclone 上传完成后执行 Drive 端哈希/大小核验；上传失败会令 systemd 任务失败并保留本地归档供下次重试。
-- `usgiftcardhub-rclone-upload.timer` 每小时幂等重试最新归档，缓解 rclone 公共 OAuth client 的 Google Drive API 分钟级配额拥塞。
+- `usgiftcardhub-rclone-upload.timer` 每小时幂等重试最新归档，缓解 rclone 公共 OAuth client 的 Google Drive API 分钟级配额拥塞；它是失败重试，不替代每小时生成新归档的 archive timer。
+
+SQLite 使用在线 Backup API 生成事务一致的数据库副本，Redis 使用 `--rdb` 生成完整快照；传输时先移除接收端 `READY`，数据和校验文件完成后最后发送 `READY`，温备校验全部 SHA-256 后才应用。SQLite、Redis 与 uploads 的取样仍相差数秒，因此这是可恢复的一致性快照，不是跨存储的原子事务快照。
 
 副本同步地址保存在主站权限为 `0600` 的目标文件中，不提交具体 Tailscale IP。Tailscale 节点不接受 tailnet DNS 或子网路由，也不启用 Tailscale SSH；原有公网、Cloudflare 和 `tls-shunt-proxy` 路径不变。
 
@@ -40,7 +44,7 @@ usgiftcardhub-replica-apply.timer active/enabled
 - `usgiftcardhub.com` TLS 证书缓存与 ACME 账户材料
 - `MANIFEST`、`SHA256SUMS`、`READY`
 
-生产历史日志和旧的部署备份不属于接管必需数据，不进入每 15 分钟快照。
+生产历史日志和旧的部署备份不属于接管必需数据，不进入每 5 分钟快照。
 
 ## 接管
 

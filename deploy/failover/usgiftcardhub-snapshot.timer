@@ -1,9 +1,9 @@
 [Unit]
-Description=Replicate USGiftCardHub to standby VPSes every 15 minutes
+Description=Replicate USGiftCardHub to standby VPSes every 5 minutes
 
 [Timer]
 OnBootSec=5min
-OnUnitActiveSec=15min
+OnUnitActiveSec=5min
 RandomizedDelaySec=30
 Persistent=true
 
