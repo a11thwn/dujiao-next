@@ -104,7 +104,7 @@ if ! id "$service_user" >/dev/null 2>&1; then
   useradd --system --gid "$service_user" --home-dir "$install_dir" --shell /usr/sbin/nologin "$service_user"
 fi
 
-mkdir -p "$install_dir/backups" "$install_dir/db" "$install_dir/logs"
+mkdir -p "$install_dir/backups" "$install_dir/db" "$install_dir/uploads" "$install_dir/logs"
 
 app_secret=$(openssl rand -hex 32)
 jwt_secret=$(openssl rand -hex 32)
@@ -123,7 +123,8 @@ sed \
   "$staging_dir/config.yml.template" > "$install_dir/config.yml"
 chown "$service_user:$service_user" "$install_dir/config.yml"
 chmod 0600 "$install_dir/config.yml"
-chown -R "$service_user:$service_user" "$install_dir/db" "$install_dir/logs"
+chown -R "$service_user:$service_user" "$install_dir/db" "$install_dir/uploads" "$install_dir/logs"
+chmod 0700 "$install_dir/uploads"
 
 install -o root -g root -m 0644 "$staging_dir/usgiftcardhub.service" "$service_unit_file"
 systemctl daemon-reload

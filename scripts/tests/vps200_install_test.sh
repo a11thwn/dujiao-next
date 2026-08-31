@@ -114,5 +114,12 @@ ln -s "$lock_sentinel" "$symlink_lock"
 assert_failure "rejects a symlink install lock" acquire_install_lock "$symlink_lock"
 assert_failure "rejects a non-normalized install lock" acquire_install_lock "$TEST_TMP/missing/../lock"
 
+assert_success "fresh install creates the uploads directory" \
+  grep -Fq 'mkdir -p "$install_dir/backups" "$install_dir/db" "$install_dir/uploads" "$install_dir/logs"' "$INSTALL_SCRIPT"
+assert_success "fresh install grants the service account ownership of uploads" \
+  grep -Fq 'chown -R "$service_user:$service_user" "$install_dir/db" "$install_dir/uploads" "$install_dir/logs"' "$INSTALL_SCRIPT"
+assert_success "fresh install keeps uploads private on disk" \
+  grep -Fq 'chmod 0700 "$install_dir/uploads"' "$INSTALL_SCRIPT"
+
 printf 'passed=%d failed=%d\n' "$passed" "$failed"
 (( failed == 0 ))
