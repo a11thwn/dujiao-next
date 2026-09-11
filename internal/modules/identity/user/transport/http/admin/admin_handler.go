@@ -39,17 +39,18 @@ var (
 
 // UserListFilter 管理端用户列表过滤条件。
 type UserListFilter struct {
-	Page          int
-	PageSize      int
-	UserID        uint
-	Keyword       string
-	Status        string
-	CreatedFrom   *time.Time
-	CreatedTo     *time.Time
-	LastLoginFrom *time.Time
-	LastLoginTo   *time.Time
-	SortBy        string
-	SortOrder     string
+	Page             int
+	PageSize         int
+	UserID           uint
+	Keyword          string
+	PurchaseApproval string
+	Status           string
+	CreatedFrom      *time.Time
+	CreatedTo        *time.Time
+	LastLoginFrom    *time.Time
+	LastLoginTo      *time.Time
+	SortBy           string
+	SortOrder        string
 }
 
 // UserDirectory 用户读写端口。
@@ -167,13 +168,15 @@ func NewAdminHandler(
 
 // UpdateAdminUserRequest 管理员更新用户请求。
 type UpdateAdminUserRequest struct {
-	Nickname      *string `json:"nickname"`
-	Locale        *string `json:"locale"`
-	Status        *string `json:"status"`
-	Email         *string `json:"email"`
-	Password      *string `json:"password"`
-	AdminNote     *string `json:"admin_note"`
-	EmailVerified *bool   `json:"email_verified"`
+	PurchaseApproval   *string `json:"purchase_approval"`
+	PurchaseReviewNote *string `json:"purchase_review_note"`
+	Nickname           *string `json:"nickname"`
+	Locale             *string `json:"locale"`
+	Status             *string `json:"status"`
+	Email              *string `json:"email"`
+	Password           *string `json:"password"`
+	AdminNote          *string `json:"admin_note"`
+	EmailVerified      *bool   `json:"email_verified"`
 }
 
 // BatchUpdateUserStatusRequest 批量更新用户状态请求。
@@ -249,17 +252,18 @@ func (h *AdminHandler) GetAdminUsers(c *gin.Context) {
 	}
 
 	users, total, err := h.users.List(UserListFilter{
-		Page:          page,
-		PageSize:      pageSize,
-		UserID:        userID,
-		Keyword:       keyword,
-		Status:        status,
-		CreatedFrom:   createdFrom,
-		CreatedTo:     createdTo,
-		LastLoginFrom: lastLoginFrom,
-		LastLoginTo:   lastLoginTo,
-		SortBy:        strings.TrimSpace(c.Query("sort_by")),
-		SortOrder:     strings.TrimSpace(c.Query("sort_order")),
+		Page:             page,
+		PageSize:         pageSize,
+		UserID:           userID,
+		Keyword:          keyword,
+		PurchaseApproval: strings.TrimSpace(c.Query("purchase_approval")),
+		Status:           status,
+		CreatedFrom:      createdFrom,
+		CreatedTo:        createdTo,
+		LastLoginFrom:    lastLoginFrom,
+		LastLoginTo:      lastLoginTo,
+		SortBy:           strings.TrimSpace(c.Query("sort_by")),
+		SortOrder:        strings.TrimSpace(c.Query("sort_order")),
 	})
 	if err != nil {
 		ginutil.RespondError(c, response.CodeInternal, "error.user_fetch_failed", err)
@@ -423,6 +427,26 @@ func (h *AdminHandler) UpdateAdminUser(c *gin.Context) {
 		}
 	}
 
+	if req.PurchaseApproval != nil && (*req.PurchaseApproval != user.PurchaseApproval || (req.PurchaseReviewNote != nil && *req.PurchaseReviewNote != user.PurchaseReviewNote)) {
+		approval := strings.TrimSpace(*req.PurchaseApproval)
+		if approval != "pending" && approval != "approved" && approval != "rejected" {
+			ginutil.RespondError(c, response.CodeBadRequest, "error.bad_request", nil)
+			return
+		}
+		operatorID, ok := ginutil.GetAdminID(c)
+		if !ok {
+			return
+		}
+		now := time.Now()
+		user.PurchaseApproval = approval
+		user.PurchaseReviewedAt = &now
+		user.PurchaseReviewedBy = operatorID
+		updated = true
+	}
+	if req.PurchaseReviewNote != nil {
+		user.PurchaseReviewNote = strings.TrimSpace(*req.PurchaseReviewNote)
+		updated = true
+	}
 	if req.AdminNote != nil {
 		user.AdminNote = *req.AdminNote
 		updated = true

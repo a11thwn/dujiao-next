@@ -36,6 +36,12 @@ func (s *PaymentService) CapturePayment(input CapturePaymentInput) (*paymentdoma
 		return payment, nil
 	}
 
+	if payment.OrderID > 0 {
+		if err := s.checkPurchaseApproval(payment.OrderID); err != nil {
+			return nil, err
+		}
+	}
+
 	channel, err := s.channelRepo.GetByID(payment.ChannelID)
 	if err != nil {
 		return nil, ErrPaymentUpdateFailed

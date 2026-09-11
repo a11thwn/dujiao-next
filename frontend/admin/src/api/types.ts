@@ -500,6 +500,10 @@ export interface AdminOrderRefund {
 
 // --- User ---
 export interface AdminUser {
+  purchase_approval?: string
+  purchase_review_note?: string
+  purchase_reviewed_at?: string
+  purchase_reviewed_by?: number
   id: number
   email: string
   display_name: string

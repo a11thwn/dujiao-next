@@ -17,7 +17,7 @@ func TestPaymentServiceImplementationIsSplitByResponsibility(t *testing.T) {
 			"NewPaymentService", "ListPayments", "GetPayment", "ListChannels", "GetChannel",
 			"paymentLogger",
 		},
-		"payment_service_create.go": {"hasProviderResult", "CreatePayment"},
+		"payment_service_create.go": {"hasProviderResult", "CreatePayment", "checkPurchaseApproval"},
 		"payment_service_recharge.go": {
 			"CreateWalletRechargePayment", "generateWalletRechargeNo",
 			"ExpireWalletRechargePayment", "canExpireWalletRechargePayment",

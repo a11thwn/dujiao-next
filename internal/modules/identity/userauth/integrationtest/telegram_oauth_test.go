@@ -209,6 +209,10 @@ func TestFindOrCreateTelegramUserIgnoresEmailDomainAllowlist(t *testing.T) {
 		t.Fatalf("expected telegram placeholder email user, got %+v", user)
 	}
 
+	if user.PurchaseApproval != "pending" {
+		t.Fatalf("new Telegram account approval: %s", user.PurchaseApproval)
+	}
+
 	var count int64
 	if err := db.Model(&userdomain.User{}).Count(&count).Error; err != nil {
 		t.Fatalf("count users failed: %v", err)

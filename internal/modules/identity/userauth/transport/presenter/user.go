@@ -11,6 +11,7 @@ import (
 
 // UserProfileResp 用户资料响应
 type UserProfileResp struct {
+	PurchaseApproval   string       `json:"purchase_approval"`
 	ID                 uint         `json:"id"`
 	Email              string       `json:"email"`
 	Nickname           string       `json:"nickname"`
@@ -29,6 +30,7 @@ func NewUserProfileResp(user *userdomain.User, emailMode, passwordMode string) U
 		return UserProfileResp{}
 	}
 	return UserProfileResp{
+		PurchaseApproval:   user.PurchaseApproval,
 		ID:                 user.ID,
 		Email:              user.Email,
 		Nickname:           user.DisplayName,
@@ -106,18 +108,20 @@ func NewTelegramBindingResp(identity *externalidentitydomain.Identity, canUnbind
 
 // UserAuthBriefResp 登录/注册返回的精简用户信息
 type UserAuthBriefResp struct {
-	ID              uint       `json:"id"`
-	Email           string     `json:"email"`
-	Nickname        string     `json:"nickname"`
-	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	PurchaseApproval string     `json:"purchase_approval"`
+	ID               uint       `json:"id"`
+	Email            string     `json:"email"`
+	Nickname         string     `json:"nickname"`
+	EmailVerifiedAt  *time.Time `json:"email_verified_at"`
 }
 
 // NewUserAuthBriefResp 从 userdomain.User 构造登录/注册精简响应
 func NewUserAuthBriefResp(user *userdomain.User) UserAuthBriefResp {
 	return UserAuthBriefResp{
-		ID:              user.ID,
-		Email:           user.Email,
-		Nickname:        user.DisplayName,
-		EmailVerifiedAt: user.EmailVerifiedAt,
+		PurchaseApproval: user.PurchaseApproval,
+		ID:               user.ID,
+		Email:            user.Email,
+		Nickname:         user.DisplayName,
+		EmailVerifiedAt:  user.EmailVerifiedAt,
 	}
 }

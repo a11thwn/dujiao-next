@@ -31,17 +31,18 @@ type adminUserDirectoryAdapter struct {
 
 func (a adminUserDirectoryAdapter) List(filter adminusertransport.UserListFilter) ([]userdomain.User, int64, error) {
 	return a.users.List(usercontract.ListFilter{
-		Page:          filter.Page,
-		PageSize:      filter.PageSize,
-		UserID:        filter.UserID,
-		Keyword:       filter.Keyword,
-		Status:        filter.Status,
-		CreatedFrom:   filter.CreatedFrom,
-		CreatedTo:     filter.CreatedTo,
-		LastLoginFrom: filter.LastLoginFrom,
-		LastLoginTo:   filter.LastLoginTo,
-		SortBy:        filter.SortBy,
-		SortOrder:     filter.SortOrder,
+		Page:             filter.Page,
+		PageSize:         filter.PageSize,
+		UserID:           filter.UserID,
+		Keyword:          filter.Keyword,
+		PurchaseApproval: filter.PurchaseApproval,
+		Status:           filter.Status,
+		CreatedFrom:      filter.CreatedFrom,
+		CreatedTo:        filter.CreatedTo,
+		LastLoginFrom:    filter.LastLoginFrom,
+		LastLoginTo:      filter.LastLoginTo,
+		SortBy:           filter.SortBy,
+		SortOrder:        filter.SortOrder,
 	})
 }
 

@@ -671,3 +671,37 @@ func TestBuildOrderResultSKUWholesaleDoesNotFallbackToUniversalTier(t *testing.T
 		t.Fatalf("expected skuB to use universal tier: unit=%s wholesale=%s", item.UnitPrice.String(), item.WholesaleDiscount.String())
 	}
 }
+
+func TestOrderPurchaseApprovalLifecycle(t *testing.T) {
+	f := setupWholesaleOrderFixture(t, "purchase_approval", nil, nil, nil)
+	f.user = userdomain.User{Email: "review@example.com", PasswordHash: "hash", Status: "active"}
+	if err := f.db.Create(&f.user).Error; err != nil {
+		t.Fatal(err)
+	}
+	input := CreateOrderInput{UserID: f.user.ID, Items: []CreateOrderItem{{ProductID: f.product.ID, SKUID: f.sku.ID, Quantity: 1}}}
+	for _, state := range []string{"approved", "pending", "rejected", "approved"} {
+		if err := f.db.Model(&f.user).Update("purchase_approval", state).Error; err != nil {
+			t.Fatal(err)
+		}
+		_, err := f.svc.PreviewOrder(input)
+		if state == "approved" {
+			if err != nil {
+				t.Fatalf("approved preview: %v", err)
+			}
+			continue
+		}
+		if !errors.Is(err, ErrProductPurchaseNotAllowed) {
+			t.Fatalf("preview %s: %v", state, err)
+		}
+		if _, err := f.svc.CreateOrder(input); !errors.Is(err, ErrProductPurchaseNotAllowed) {
+			t.Fatalf("create %s: %v", state, err)
+		}
+	}
+	guest := CreateGuestOrderInput{Email: "guest@example.com", OrderPassword: "password", Items: input.Items}
+	if _, err := f.svc.CreateGuestOrder(guest); !errors.Is(err, ErrProductPurchaseNotAllowed) {
+		t.Fatalf("guest create: %v", err)
+	}
+	if _, err := f.svc.PreviewGuestOrder(guest); !errors.Is(err, ErrProductPurchaseNotAllowed) {
+		t.Fatalf("guest preview: %v", err)
+	}
+}

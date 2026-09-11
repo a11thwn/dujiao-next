@@ -79,3 +79,10 @@ export const userStatusClass = (status?: string) => {
   if (status === 'disabled') return 'text-rose-700 border-rose-200 bg-rose-50'
   return 'text-slate-600 border-slate-200 bg-slate-50'
 }
+
+export const purchaseApprovalClass = (status?: string) => {
+  if (status === 'approved') return 'text-emerald-700 border-emerald-200 bg-emerald-50'
+  if (status === 'pending') return 'text-amber-700 border-amber-200 bg-amber-50'
+  if (status === 'rejected') return 'text-rose-700 border-rose-200 bg-rose-50'
+  return 'text-slate-600 border-slate-200 bg-slate-50'
+}

@@ -3,8 +3,10 @@ package adminuserhttp
 import (
 	"encoding/json"
 	"errors"
+	userdomain "github.com/dujiao-next/internal/modules/identity/user/domain"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dujiao-next/internal/platform/http/response"
@@ -73,5 +75,40 @@ func TestUnbindAdminUserGoogle(t *testing.T) {
 				t.Fatalf("UnbindGoogle userID = %d, want %d", unbinder.googleUserID, item.wantUserID)
 			}
 		})
+	}
+}
+
+type approvalDirectory struct {
+	UserDirectory
+	user userdomain.User
+}
+
+func (d *approvalDirectory) GetByID(uint) (*userdomain.User, error) { u := d.user; return &u, nil }
+func (d *approvalDirectory) Update(u *userdomain.User) error        { d.user = *u; return nil }
+func TestAdminCanChangeExistingUserPurchasePermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	d := &approvalDirectory{user: userdomain.User{ID: 1, Status: "active", PurchaseApproval: "approved"}}
+	h := &AdminHandler{users: d}
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("admin_id", uint(7)); c.Next() })
+	router.PUT("/users/:id", h.UpdateAdminUser)
+	for _, state := range []string{"rejected", "pending", "approved", "invalid"} {
+		req := httptest.NewRequest(http.MethodPut, "/users/1", strings.NewReader(`{"purchase_approval":"`+state+`","purchase_review_note":"reviewed"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		var body response.Response
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if state == "invalid" {
+			if body.StatusCode != response.CodeBadRequest || d.user.PurchaseApproval != "approved" {
+				t.Fatal("invalid review accepted")
+			}
+			continue
+		}
+		if body.StatusCode != response.CodeOK || d.user.PurchaseApproval != state || d.user.Status != "active" || d.user.PurchaseReviewedBy != 7 || d.user.PurchaseReviewedAt == nil {
+			t.Fatalf("review not saved: %s", rec.Body.String())
+		}
 	}
 }

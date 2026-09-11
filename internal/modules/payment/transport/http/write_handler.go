@@ -21,6 +21,7 @@ import (
 )
 
 var (
+	ErrPurchaseNotApproved                 = errors.New("purchase approval required")
 	ErrPaymentInvalid                      = errors.New("payment invalid")
 	ErrPaymentNotFound                     = errors.New("payment not found")
 	ErrOrderStatusInvalid                  = errors.New("order status invalid")
@@ -353,6 +354,7 @@ var paymentProviderGatewayErrorRules = []mappedError{
 
 var paymentCreateErrorRules = concatMappedErrors(
 	[]mappedError{
+		{target: ErrPurchaseNotApproved, code: response.CodeForbidden, key: "error.product_purchase_not_allowed"},
 		{target: ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
 		{target: ErrOrderNotFound, code: response.CodeNotFound, key: "error.order_not_found"},
 		{target: ErrOrderStatusInvalid, code: response.CodeBadRequest, key: "error.order_status_invalid"},
@@ -371,6 +373,7 @@ var paymentCreateErrorRules = concatMappedErrors(
 
 var paymentCaptureErrorRules = concatMappedErrors(
 	[]mappedError{
+		{target: ErrPurchaseNotApproved, code: response.CodeForbidden, key: "error.product_purchase_not_allowed"},
 		{target: ErrPaymentInvalid, code: response.CodeBadRequest, key: "error.payment_invalid"},
 		{target: ErrPaymentNotFound, code: response.CodeNotFound, key: "error.payment_not_found"},
 		{target: ErrPaymentChannelNotFound, code: response.CodeNotFound, key: "error.payment_channel_not_found"},

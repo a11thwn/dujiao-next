@@ -1,4 +1,5 @@
 <template>
+  <div v-if="userAuthStore.isAuthenticated && userAuthStore.user?.purchase_approval !== 'approved'" role="status" class="mx-auto my-4 max-w-6xl rounded-xl border p-4 text-sm">{{ t('checkout.purchaseApprovalRequired') }}</div>
   <div class="mx-auto w-full max-w-[1180px] px-6 pb-8">
     <nav class="flex flex-wrap items-center gap-1.5 py-5 pb-2 text-[13.5px] font-semibold text-muted-foreground">
       <RouterLink to="/" class="hover:text-primary">{{ t('nav.home') }}</RouterLink>
@@ -77,7 +78,6 @@
         <section v-if="!userAuthStore.isAuthenticated" class="rounded-xl border bg-card p-5">
           <h2 class="mb-3.5 text-lg font-bold">{{ t('checkout.modeTitle') }}</h2>
           <div class="mb-3.5 flex flex-wrap gap-2.5">
-            <Button type="button" size="sm" class="rounded-full" :variant="checkoutMode === 'guest' ? 'default' : 'outline'" @click="checkoutMode = 'guest'">{{ t('checkout.guestPurchase') }}</Button>
             <Button as-child variant="outline" size="sm" class="rounded-full"><RouterLink to="/auth/login">{{ t('checkout.memberPurchase') }}</RouterLink></Button>
           </div>
 

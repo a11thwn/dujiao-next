@@ -5,7 +5,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	orderapp "github.com/dujiao-next/internal/modules/order/application"
 	"strconv"
 	"sync"
 	"testing"
@@ -36,6 +38,7 @@ import (
 	productgormstore "github.com/dujiao-next/internal/modules/catalog/product/store/gormstore"
 
 	userdomain "github.com/dujiao-next/internal/modules/identity/user/domain"
+	userstore "github.com/dujiao-next/internal/modules/identity/user/infrastructure/gormstore"
 	walletapp "github.com/dujiao-next/internal/modules/wallet/application"
 	walletcontract "github.com/dujiao-next/internal/modules/wallet/contract"
 	walletgormstore "github.com/dujiao-next/internal/modules/wallet/infrastructure/gormstore"
@@ -103,6 +106,7 @@ func setupPaymentServiceWalletTest(t *testing.T) (*PaymentService, *gorm.DB) {
 
 	paymentSvc := NewPaymentService(PaymentServiceOptions{
 		OrderStore:              orderRepo,
+		UserStore:               userstore.New(db),
 		ProductRepo:             productRepo,
 		ProductSKURepo:          productSKURepo,
 		PaymentStore:            paymentRepo,
@@ -973,4 +977,42 @@ func assertWalletRechargeSuccessState(t *testing.T, db *gorm.DB, paymentID uint,
 
 func ptrTime(v time.Time) *time.Time {
 	return &v
+}
+
+func TestPaymentPurchaseApprovalChangesApplyToExistingOrders(t *testing.T) {
+	svc, db := setupPaymentServiceWalletTest(t)
+	u := userdomain.User{Email: "approval@example.com", PasswordHash: "hash", Status: "active"}
+	if err := db.Create(&u).Error; err != nil {
+		t.Fatal(err)
+	}
+	order := orderdomain.Order{OrderNo: "approval-order", UserID: u.ID, Status: "pending_payment"}
+	if err := db.Create(&order).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []string{"approved", "pending", "rejected", "approved"} {
+		if err := db.Model(&u).Update("purchase_approval", state).Error; err != nil {
+			t.Fatal(err)
+		}
+		err := svc.checkPurchaseApproval(order.ID)
+		if state == "approved" {
+			if err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if !errors.Is(err, orderapp.ErrProductPurchaseNotAllowed) {
+			t.Fatalf("%s: %v", state, err)
+		}
+		for _, balance := range []bool{false, true} {
+			if _, err := svc.CreatePayment(CreatePaymentInput{OrderID: order.ID, UseBalance: balance}); !errors.Is(err, orderapp.ErrProductPurchaseNotAllowed) {
+				t.Fatalf("payment bypass: %v", err)
+			}
+		}
+	}
+	if err := db.Model(&order).Update("user_id", 0).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreatePayment(CreatePaymentInput{OrderID: order.ID}); !errors.Is(err, orderapp.ErrProductPurchaseNotAllowed) {
+		t.Fatalf("guest payment: %v", err)
+	}
 }

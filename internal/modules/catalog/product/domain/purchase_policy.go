@@ -30,7 +30,7 @@ func NormalizePurchaseType(raw string) string {
 	case "", constants.ProductPurchaseMember:
 		return constants.ProductPurchaseMember
 	case constants.ProductPurchaseGuest:
-		return constants.ProductPurchaseGuest
+		return constants.ProductPurchaseMember
 	default:
 		return ""
 	}

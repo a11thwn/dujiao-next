@@ -1496,7 +1496,7 @@ const messages = {
           unlimited: '库存不限',
         },
         purchaseType: {
-          member: '会员购买',
+          member: '注册用户购买',
           guest: '游客购买',
         },
         fulfillmentType: {
@@ -2157,6 +2157,7 @@ const messages = {
       },
       users: {
         title: '用户管理',
+        purchase: { badge: { approved: '通过', pending: '待审核', rejected: '禁止' }, title: '购买审核', all: '全部购买资格', pending: '待审核', approved: '通过（允许购买）', rejected: '拒绝（禁止购买）', note: '审核备注' },
         filterUserId: '用户ID',
         filterKeyword: '搜索邮箱 / 昵称 / 第三方账号...',
         filterStatusAll: '全部状态',
@@ -5903,7 +5904,7 @@ const messages = {
           unlimited: '庫存不限',
         },
         purchaseType: {
-          member: '會員購買',
+          member: '註冊用戶購買',
           guest: '訪客購買',
         },
         fulfillmentType: {
@@ -6564,6 +6565,7 @@ const messages = {
       },
       users: {
         title: '用戶管理',
+        purchase: { badge: { approved: '通過', pending: '待審核', rejected: '禁止' }, title: '購買審核', all: '全部購買資格', pending: '待審核', approved: '通過（允許購買）', rejected: '拒絕（禁止購買）', note: '審核備註' },
         filterUserId: '用戶ID',
         filterKeyword: '搜尋信箱 / 暱稱 / 第三方帳號...',
         filterStatusAll: '全部狀態',
@@ -10310,7 +10312,7 @@ const messages = {
           unlimited: 'Unlimited stock',
         },
         purchaseType: {
-          member: 'Members only',
+          member: 'Registered users only',
           guest: 'Guest purchase',
         },
         fulfillmentType: {
@@ -10971,6 +10973,7 @@ const messages = {
       },
       users: {
         title: 'Users',
+        purchase: { badge: { approved: 'Approved', pending: 'Pending', rejected: 'Prohibited' }, title: 'Purchase approval', all: 'All purchase permissions', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected', note: 'Review note' },
         filterUserId: 'User ID',
         filterKeyword: 'Search email / nickname / third-party account...',
         filterStatusAll: 'All status',

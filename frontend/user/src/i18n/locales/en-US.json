@@ -233,7 +233,7 @@
   },
   "productPurchase": {
     "label": "Purchase type",
-    "member": "Members only",
+    "member": "Registered users only",
     "guest": "Guest purchase"
   },
   "blog": {
@@ -1149,6 +1149,7 @@
     "minPurchaseNotMet": "This product requires at least {count} per order"
   },
   "checkout": {
+    "purchaseApprovalRequired": "Purchases require a registered account approved by an administrator. Accounts pending review or rejected cannot purchase.",
     "title": "Checkout",
     "subtitle": "Review order and submit",
     "empty": "Your cart is empty",

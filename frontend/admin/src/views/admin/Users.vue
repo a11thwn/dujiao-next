@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
 import type { AdminUser, AdminMemberLevel } from '@/api/types'
 import IdCell from '@/components/IdCell.vue'
-import { userStatusClass, userStatusLabel } from '@/utils/status'
+import { purchaseApprovalClass, userStatusClass, userStatusLabel } from '@/utils/status'
 import { formatDate, formatMoney, getLocalizedText, toRFC3339 } from '@/utils/format'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -36,6 +36,7 @@ const pagination = ref({
 const filters = reactive({
   userId: '',
   keyword: '',
+  purchaseApproval: '__all__',
   status: '__all__',
   createdFrom: '',
   createdTo: '',
@@ -77,6 +78,8 @@ const form = reactive({
   password: '',
   locale: 'zh-CN',
   email_verified: 'unverified',
+  purchase_approval: 'pending',
+  purchase_review_note: '',
   status: 'active',
   admin_note: '',
 })
@@ -94,6 +97,7 @@ const fetchUsers = async (page = 1, options: ListFetchOptions = {}) => {
       page_size: pagination.value.page_size,
       user_id: filters.userId || undefined,
       keyword: filters.keyword || undefined,
+      purchase_approval: normalizeFilterValue(filters.purchaseApproval) || undefined,
       status: normalizeFilterValue(filters.status) || undefined,
       created_from: toRFC3339(filters.createdFrom),
       created_to: toRFC3339(filters.createdTo),
@@ -158,6 +162,7 @@ const refresh = () => {
 const resetFilters = () => {
   filters.userId = ''
   filters.keyword = ''
+  filters.purchaseApproval = '__all__'
   filters.status = '__all__'
   filters.createdFrom = ''
   filters.createdTo = ''
@@ -221,6 +226,8 @@ const openEditModal = (user: AdminUser) => {
   form.password = ''
   form.locale = user.locale || 'zh-CN'
   form.email_verified = user.email_verified_at ? 'verified' : 'unverified'
+  form.purchase_approval = user.purchase_approval || 'approved'
+  form.purchase_review_note = user.purchase_review_note || ''
   form.status = user.status || 'active'
   form.admin_note = (user.admin_note as string) || ''
   error.value = ''
@@ -246,6 +253,8 @@ const handleSubmit = async () => {
       password: form.password || undefined,
       locale: form.locale,
       email_verified: form.email_verified === 'verified',
+      purchase_approval: form.purchase_approval,
+      purchase_review_note: form.purchase_review_note,
       status: form.status,
       admin_note: form.admin_note,
     })
@@ -291,6 +300,15 @@ onMounted(() => {
         </div>
         <div class="w-full md:w-64">
           <Input v-model="filters.keyword" :placeholder="t('admin.users.filterKeyword')" @update:modelValue="debouncedSearch" />
+        </div>
+        <div class="w-full md:w-40">
+          <Select v-model="filters.purchaseApproval" @update:modelValue="handleSearch">
+            <SelectTrigger class="h-9 w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{{ t('admin.users.purchase.all') }}</SelectItem>
+              <SelectItem v-for="state in ['pending', 'approved', 'rejected']" :key="state" :value="state">{{ t(`admin.users.purchase.${state}`) }}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div class="w-full md:w-40">
           <Select v-model="filters.status" @update:modelValue="handleSearch">
@@ -359,6 +377,7 @@ onMounted(() => {
             <TableHead class="px-6 py-3 min-w-[140px]">{{ t('admin.users.table.email') }}</TableHead>
             <TableHead class="px-6 py-3 min-w-[160px]">{{ t('admin.users.table.nickname') }}</TableHead>
             <TableHead class="px-6 py-3">{{ t('admin.users.table.status') }}</TableHead>
+            <TableHead class="px-6 py-3">{{ t('admin.users.purchase.title') }}</TableHead>
             <TableHead class="px-6 py-3">{{ t('admin.users.table.locale') }}</TableHead>
             <TableHead
               class="px-6 py-3"
@@ -412,12 +431,12 @@ onMounted(() => {
         </TableHeader>
         <TableBody class="divide-y divide-border">
           <TableRow v-if="loading">
-            <TableCell :colspan="12" class="p-0">
+            <TableCell :colspan="13" class="p-0">
               <TableSkeleton :columns="10" :rows="5" />
             </TableCell>
           </TableRow>
           <TableRow v-else-if="users.length === 0">
-            <TableCell colspan="12" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.users.empty') }}</TableCell>
+            <TableCell colspan="13" class="px-6 py-8 text-center text-muted-foreground">{{ t('admin.users.empty') }}</TableCell>
           </TableRow>
           <TableRow v-for="user in users" :key="user.id" class="hover:bg-muted/30">
             <TableCell class="px-6 py-4">
@@ -431,6 +450,11 @@ onMounted(() => {
             <TableCell class="px-6 py-4 text-xs">
               <span class="inline-flex rounded-full border px-2.5 py-1 text-xs" :class="statusClass(user.status)">
                 {{ statusLabel(user.status) }}
+              </span>
+            </TableCell>
+            <TableCell class="px-6 py-4 text-xs">
+              <span class="inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-xs" :class="purchaseApprovalClass(user.purchase_approval || 'approved')">
+                {{ t(`admin.users.purchase.badge.${user.purchase_approval || 'approved'}`) }}
               </span>
             </TableCell>
             <TableCell class="px-6 py-4 text-xs text-muted-foreground">{{ formatLocale(user.locale) }}</TableCell>
@@ -543,6 +567,15 @@ onMounted(() => {
                   <SelectItem value="disabled">{{ t('admin.users.status.disabled') }}</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-muted-foreground mb-1.5">{{ t('admin.users.purchase.title') }}</label>
+              <Select v-model="form.purchase_approval">
+                <SelectTrigger class="h-9 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem v-for="state in ['pending', 'approved', 'rejected']" :key="state" :value="state">{{ t(`admin.users.purchase.${state}`) }}</SelectItem></SelectContent>
+              </Select>
+              <label class="block mt-3 text-xs">{{ t('admin.users.purchase.note') }}</label>
+              <Textarea v-model="form.purchase_review_note" rows="2" />
             </div>
             <div>
               <label class="block text-xs font-medium text-muted-foreground mb-1.5">{{ t('admin.users.form.adminNote') }}</label>

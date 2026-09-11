@@ -98,6 +98,10 @@ func AutoMigrate() error {
 		return err
 	}
 
+	// All catalog entries require a registered buyer; repeat safely on startup.
+	if err := db.Model(&productdomain.Product{}).Where("purchase_type IS NULL OR purchase_type <> ?", constants.ProductPurchaseMember).Update("purchase_type", constants.ProductPurchaseMember).Error; err != nil {
+		return err
+	}
 	if err := ensureUserOAuthIdentityUserProviderUniqueIndex(); err != nil {
 		return err
 	}

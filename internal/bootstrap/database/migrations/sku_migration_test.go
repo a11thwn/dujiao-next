@@ -3,6 +3,8 @@ package migrations
 import (
 	"errors"
 	"fmt"
+	categorydomain "github.com/dujiao-next/internal/modules/catalog/category/domain"
+	userdomain "github.com/dujiao-next/internal/modules/identity/user/domain"
 	"strings"
 	"testing"
 	"time"
@@ -631,5 +633,51 @@ func TestAutoMigrateReplacesSupersededProcurementConstraintName(t *testing.T) {
 	assertModelIndexesExist(t, db, &procurementdomain.Order{})
 	if !db.Migrator().HasConstraint(&procurementdomain.Order{}, procurementOrderForeignKeyConstraint) {
 		t.Errorf("procurement index repair removed canonical constraint %s", procurementOrderForeignKeyConstraint)
+	}
+}
+
+func TestPurchaseApprovalMigrationPreservesReviewDecisions(t *testing.T) {
+	db := setupRegistryMigrationTestDB(t)
+	if err := db.Exec("CREATE TABLE users (id integer PRIMARY KEY, email text, password_hash text, status text)").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("INSERT INTO users (id,email,password_hash,status) VALUES (1,'legacy@example.com','hash','active')").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := AutoMigrate(); err != nil {
+		t.Fatal(err)
+	}
+	var u userdomain.User
+	if err := db.First(&u, 1).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !u.CanPurchase() {
+		t.Fatalf("legacy user not approved: %s", u.PurchaseApproval)
+	}
+	if err := db.Model(&u).Update("purchase_approval", "rejected").Error; err != nil {
+		t.Fatal(err)
+	}
+	category := categorydomain.Category{Slug: "review", NameJSON: jsonmap.JSON{"en-US": "Test"}}
+	if err := db.Create(&category).Error; err != nil {
+		t.Fatal(err)
+	}
+	p := productdomain.Product{CategoryID: category.ID, Slug: "legacy-guest", PurchaseType: "guest", TitleJSON: jsonmap.JSON{"en-US": "Test"}}
+	if err := db.Create(&p).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := AutoMigrate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.First(&u, 1).Error; err != nil {
+		t.Fatal(err)
+	}
+	if u.PurchaseApproval != "rejected" {
+		t.Fatal("restart overwrote review")
+	}
+	if err := db.First(&p, p.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if p.PurchaseType != "member" {
+		t.Fatalf("guest product not migrated: %s", p.PurchaseType)
 	}
 }

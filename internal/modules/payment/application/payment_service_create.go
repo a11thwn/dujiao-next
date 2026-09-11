@@ -56,6 +56,10 @@ func (s *PaymentService) CreatePayment(input CreatePaymentInput) (*CreatePayment
 		return nil, ErrPaymentInvalid
 	}
 
+	if err := s.checkPurchaseApproval(input.OrderID); err != nil {
+		return nil, err
+	}
+
 	log := paymentLogger(
 		"order_id", input.OrderID,
 		"channel_id", input.ChannelID,
@@ -348,4 +352,30 @@ func (s *PaymentService) CreatePayment(input CreatePaymentInput) (*CreatePayment
 		WalletPaidAmount: order.WalletPaidAmount,
 		OnlinePayAmount:  order.OnlinePaidAmount,
 	}, nil
+}
+
+// checkPurchaseApproval reads current account state, never JWT or browser state.
+// Run outside payment transactions to support SQLite single-connection pools.
+func (s *PaymentService) checkPurchaseApproval(orderID uint) error {
+	if s.orderRepo == nil {
+		return orderapp.ErrProductPurchaseNotAllowed
+	}
+	orderForPolicy, policyErr := s.orderRepo.GetByID(orderID)
+	if policyErr != nil {
+		return policyErr
+	}
+	if orderForPolicy == nil {
+		return orderapp.ErrOrderNotFound
+	}
+	if orderForPolicy.UserID == 0 || s.userRepo == nil {
+		return orderapp.ErrProductPurchaseNotAllowed
+	}
+	buyer, policyErr := s.userRepo.GetByID(orderForPolicy.UserID)
+	if policyErr != nil {
+		return policyErr
+	}
+	if !buyer.CanPurchase() {
+		return orderapp.ErrProductPurchaseNotAllowed
+	}
+	return nil
 }

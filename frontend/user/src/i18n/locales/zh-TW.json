@@ -233,7 +233,7 @@
   },
   "productPurchase": {
     "label": "購買身份",
-    "member": "會員購買",
+    "member": "註冊用戶購買",
     "guest": "遊客可購"
   },
   "blog": {
@@ -1149,6 +1149,7 @@
     "minPurchaseNotMet": "該商品單次下單至少需購買 {count} 件"
   },
   "checkout": {
+    "purchaseApprovalRequired": "購買需先註冊登入，並經管理員審核通過。待審核或審核未通過的帳戶暫不能購買。",
     "title": "訂單結算",
     "subtitle": "確認訂單資訊並提交",
     "empty": "購物車為空",

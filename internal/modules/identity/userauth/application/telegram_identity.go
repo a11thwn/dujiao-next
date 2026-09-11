@@ -71,6 +71,7 @@ func (s *Service) findOrCreateTelegramUser(verified *telegramauthapp.IdentityVer
 		PasswordSetupRequired: true,
 		DisplayName:           telegramidentity.ResolveDisplayName(verified.ProviderUserID, verified.Username, verified.FirstName, verified.LastName),
 		Status:                constants.UserStatusActive,
+		PurchaseApproval:      "pending",
 		LastLoginAt:           &now,
 		CreatedAt:             now,
 		UpdatedAt:             now,

@@ -74,6 +74,9 @@ func TestLoginVerifiedGoogleCreatesVerifiedUserAndIdentity(t *testing.T) {
 	if res == nil || res.User == nil || res.Token == "" {
 		t.Fatalf("expected completed login, got %+v", res)
 	}
+	if res.User.PurchaseApproval != "pending" {
+		t.Fatalf("new Google account approval: %s", res.User.PurchaseApproval)
+	}
 	if res.User.Email != "buyer@gmail.com" || res.User.EmailVerifiedAt == nil {
 		t.Fatalf("new Google user email not verified: %+v", res.User)
 	}

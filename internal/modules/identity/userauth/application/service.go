@@ -296,13 +296,14 @@ func (s *Service) Register(email, password, code string, agreementAccepted bool,
 	now := time.Now()
 	nickname := resolveNicknameFromEmail(normalized)
 	user := &userdomain.User{
-		Email:           normalized,
-		PasswordHash:    string(hashedPassword),
-		DisplayName:     nickname,
-		Status:          constants.UserStatusActive,
-		EmailVerifiedAt: &now,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		Email:            normalized,
+		PasswordHash:     string(hashedPassword),
+		DisplayName:      nickname,
+		Status:           constants.UserStatusActive,
+		PurchaseApproval: "pending",
+		EmailVerifiedAt:  &now,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	if err := s.userRepo.Create(user); err != nil {

@@ -381,6 +381,17 @@ func (s *OrderService) PreviewGuestOrder(input CreateGuestOrderInput) (*OrderPre
 }
 
 func (s *OrderService) previewOrder(input orderCreateParams) (*OrderPreview, error) {
+	if input.IsGuest || input.UserID == 0 || s.userRepo == nil {
+		return nil, ErrProductPurchaseNotAllowed
+	}
+	buyer, err := s.userRepo.GetByID(input.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if !buyer.CanPurchase() {
+		return nil, ErrProductPurchaseNotAllowed
+	}
+
 	result, err := s.buildOrderResult(input)
 	if err != nil {
 		return nil, err
@@ -426,6 +437,17 @@ func (s *OrderService) previewOrder(input orderCreateParams) (*OrderPreview, err
 }
 
 func (s *OrderService) createOrder(input orderCreateParams) (*orderdomain.Order, error) {
+	if input.IsGuest || input.UserID == 0 || s.userRepo == nil {
+		return nil, ErrProductPurchaseNotAllowed
+	}
+	buyer, err := s.userRepo.GetByID(input.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if !buyer.CanPurchase() {
+		return nil, ErrProductPurchaseNotAllowed
+	}
+
 	if s.queueClient == nil || !s.queueClient.Enabled() {
 		return nil, ErrQueueUnavailable
 	}

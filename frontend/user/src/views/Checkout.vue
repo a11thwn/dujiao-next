@@ -1,4 +1,5 @@
 <template>
+  <div v-if="userAuthStore.isAuthenticated && userAuthStore.user?.purchase_approval !== 'approved'" role="status" class="mx-auto my-4 max-w-6xl rounded-xl border p-4 text-sm">{{ t('checkout.purchaseApprovalRequired') }}</div>
   <div class="min-h-screen bg-background text-foreground pt-24 pb-16">
     <div class="container mx-auto px-4">
       <div class="mb-8">
@@ -111,12 +112,6 @@
           >
             <h2 class="text-lg font-bold text-foreground">{{ t('checkout.modeTitle') }}</h2>
             <div class="flex flex-wrap gap-3">
-              <Button
-                :variant="checkoutMode === 'guest' ? 'default' : 'secondary'"
-                @click="checkoutMode = 'guest'"
-              >
-                {{ t('checkout.guestPurchase') }}
-              </Button>
               <Button as-child variant="secondary">
                 <router-link to="/auth/login">
                   {{ t('checkout.memberPurchase') }}

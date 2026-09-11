@@ -5,7 +5,7 @@ import { useCartStore, type CartItem } from '../stores/cart'
 import { useBuyNowStore } from '../stores/buyNow'
 import { useAppStore } from '../stores/app'
 import { useUserAuthStore } from '../stores/userAuth'
-import { guestOrderAPI, userOrderAPI, walletAPI, type CaptchaPayload } from '../api'
+import { userProfileAPI, guestOrderAPI, userOrderAPI, walletAPI, type CaptchaPayload } from '../api'
 import { debounceAsync } from '../utils/debounce'
 import { type PageAlert } from '../utils/alerts'
 import { amountToCents, basisPointsToPercent, centsToAmount, parseInteger, rateToBasisPoints } from '../utils/money'
@@ -270,7 +270,7 @@ export function useCheckout() {
     return hasPositiveAmount(amount) ? `-${formatPrice(amount, currency)}` : formatPrice(amount, currency)
   }
 
-  const checkoutMode = ref<'guest' | 'member'>('guest')
+  const checkoutMode = ref<'guest' | 'member'>('member')
   const guestEmail = ref('')
   const guestPassword = ref('')
   const guestCaptchaPayload = ref<CaptchaPayload>({})
@@ -576,7 +576,9 @@ export function useCheckout() {
     guestTurnstileToken.value = ''
   }
 
+  const purchaseAllowed = computed(() => userAuthStore.isAuthenticated && userAuthStore.user?.purchase_approval === 'approved')
   const canSubmit = computed(() => {
+    if (!purchaseAllowed.value) return false
     if (syncingStock.value) return false
     if (submitting.value) return false
     if (cartItems.value.length === 0) return false
@@ -600,6 +602,7 @@ export function useCheckout() {
   })
 
   const submitBlockedReason = computed(() => {
+    if (!purchaseAllowed.value) return t('checkout.purchaseApprovalRequired')
     if (syncingStock.value) return t('checkout.stockSyncing')
     if (cartItems.value.length === 0) return t('checkout.errors.emptyCart')
     if (!manualFormValidation.value.valid) {
@@ -916,6 +919,12 @@ export function useCheckout() {
   }
 
   onMounted(async () => {
+    if (userAuthStore.isAuthenticated) {
+      try {
+        const response = await userProfileAPI.current()
+        userAuthStore.syncUserProfile(response.data.data)
+      } catch { /* Backend checks remain authoritative when profile refresh fails. */ }
+    }
     if (!appStore.config) {
       await appStore.loadConfig()
     }
@@ -1176,6 +1185,7 @@ export function useCheckout() {
     formatChannelFeeRate,
     formatChannelFixedFee,
     // submit
+    purchaseAllowed,
     submitting,
     canSubmit,
     handleSubmit,

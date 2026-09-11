@@ -70,7 +70,7 @@ func TestProductConfigurationNormalizersKeepDefaultsAndRejectUnknownValues(t *te
 	if got := NormalizePurchaseType(""); got != constants.ProductPurchaseMember {
 		t.Fatalf("empty purchase type want %q got %q", constants.ProductPurchaseMember, got)
 	}
-	if got := NormalizePurchaseType(constants.ProductPurchaseGuest); got != constants.ProductPurchaseGuest {
+	if got := NormalizePurchaseType(constants.ProductPurchaseGuest); got != constants.ProductPurchaseMember {
 		t.Fatalf("guest purchase type want %q got %q", constants.ProductPurchaseGuest, got)
 	}
 	if got := NormalizePurchaseType("invalid"); got != "" {

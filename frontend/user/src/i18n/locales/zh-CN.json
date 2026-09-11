@@ -1102,6 +1102,7 @@
     "minPurchaseNotMet": "该商品单次下单至少需购买 {count} 件"
   },
   "checkout": {
+    "purchaseApprovalRequired": "购买需先注册登录，并经管理员审核通过。待审核或审核未通过的账户暂不能购买。",
     "title": "订单结算",
     "subtitle": "确认订单信息并提交",
     "empty": "购物车为空",
@@ -1722,7 +1723,7 @@
   },
   "productPurchase": {
     "label": "购买身份",
-    "member": "会员购买",
+    "member": "注册用户购买",
     "guest": "游客可购"
   }
 }

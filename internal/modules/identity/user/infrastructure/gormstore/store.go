@@ -139,6 +139,9 @@ func (r *Store) List(filter usercontract.ListFilter) ([]userdomain.User, int64, 
 			like, like, like, like, like,
 		)
 	}
+	if filter.PurchaseApproval != "" {
+		query = query.Where("purchase_approval = ?", filter.PurchaseApproval)
+	}
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
 	}

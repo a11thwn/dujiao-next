@@ -8,13 +8,17 @@ import (
 
 // User 用户表
 type User struct {
-	ID                    uint         `gorm:"primarykey" json:"id"`                                         // 主键
-	Email                 string       `gorm:"uniqueIndex;not null" json:"email"`                            // 邮箱
-	PasswordHash          string       `gorm:"not null" json:"-"`                                            // 密码哈希（不返回给前端）
-	PasswordSetupRequired bool         `gorm:"not null;default:false" json:"-"`                              // 是否需要首次设置密码（Telegram 自动建号场景）
-	DisplayName           string       `gorm:"default:''" json:"display_name"`                               // 昵称
-	Locale                string       `gorm:"default:'zh-CN'" json:"locale"`                                // 语言偏好
-	Status                string       `gorm:"default:'active'" json:"status"`                               // 账号状态
+	ID                    uint         `gorm:"primarykey" json:"id"`              // 主键
+	Email                 string       `gorm:"uniqueIndex;not null" json:"email"` // 邮箱
+	PasswordHash          string       `gorm:"not null" json:"-"`                 // 密码哈希（不返回给前端）
+	PasswordSetupRequired bool         `gorm:"not null;default:false" json:"-"`   // 是否需要首次设置密码（Telegram 自动建号场景）
+	DisplayName           string       `gorm:"default:''" json:"display_name"`    // 昵称
+	Locale                string       `gorm:"default:'zh-CN'" json:"locale"`     // 语言偏好
+	Status                string       `gorm:"default:'active'" json:"status"`    // 账号状态
+	PurchaseApproval      string       `gorm:"not null;default:'approved'" json:"purchase_approval"`
+	PurchaseReviewedAt    *time.Time   `json:"purchase_reviewed_at,omitempty"`
+	PurchaseReviewedBy    uint         `json:"purchase_reviewed_by,omitempty"`
+	PurchaseReviewNote    string       `gorm:"type:text" json:"purchase_review_note,omitempty"`
 	MemberLevelID         uint         `gorm:"not null;default:0" json:"member_level_id"`                    // 当前会员等级ID
 	TotalRecharged        money.Amount `gorm:"type:decimal(20,2);not null;default:0" json:"total_recharged"` // 充值累计
 	TotalSpent            money.Amount `gorm:"type:decimal(20,2);not null;default:0" json:"total_spent"`     // 消费累计
@@ -36,4 +40,9 @@ type User struct {
 // TableName 指定表名
 func (User) TableName() string {
 	return "users"
+}
+
+// CanPurchase keeps account suspension separate from purchase approval.
+func (u *User) CanPurchase() bool {
+	return u != nil && u.Status == "active" && u.PurchaseApproval == "approved"
 }

@@ -159,3 +159,14 @@ func TestSendVerifyCodePropagatesRequestTenantBrandToSender(t *testing.T) {
 		t.Fatalf("resolved brand did not reach sender: %+v", sender.brand)
 	}
 }
+
+func TestEmailRegistrationNeedsPurchaseApproval(t *testing.T) {
+	svc, _, _ := newRegistrationDomainPolicyAuthService(t)
+	user, token, _, err := svc.Register("purchase@example.com", "Password123!", "", true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token == "" || user.Status != "active" || user.PurchaseApproval != "pending" {
+		t.Fatalf("registration must allow login but require review")
+	}
+}
