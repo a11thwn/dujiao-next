@@ -411,6 +411,60 @@ func TestHandleOrderStatusEmailSkipsCanceledRegisteredOrderWhenPayloadStatusEmpt
 	}
 }
 
+func TestShouldSkipSupersededOrderStatusEmail(t *testing.T) {
+	tests := []struct {
+		name          string
+		taskStatus    string
+		currentStatus string
+		want          bool
+	}{
+		{name: "delivered_after_refund", taskStatus: constants.OrderStatusDelivered, currentStatus: constants.OrderStatusRefunded, want: true},
+		{name: "completed_after_partial_refund", taskStatus: constants.OrderStatusCompleted, currentStatus: constants.OrderStatusPartiallyRefunded, want: true},
+		{name: "delivered_after_cancel", taskStatus: constants.OrderStatusDelivered, currentStatus: constants.OrderStatusCanceled, want: true},
+		{name: "delivered_current", taskStatus: constants.OrderStatusDelivered, currentStatus: constants.OrderStatusDelivered, want: false},
+		{name: "delivered_then_completed", taskStatus: constants.OrderStatusDelivered, currentStatus: constants.OrderStatusCompleted, want: false},
+		{name: "refund_notification", taskStatus: constants.OrderStatusRefunded, currentStatus: constants.OrderStatusRefunded, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldSkipSupersededOrderStatusEmail(tt.taskStatus, tt.currentStatus); got != tt.want {
+				t.Fatalf("shouldSkipSupersededOrderStatusEmail(%q, %q) = %v, want %v", tt.taskStatus, tt.currentStatus, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHandleOrderStatusEmailSkipsDeliveredTaskAfterRefund(t *testing.T) {
+	task, err := queue.NewOrderStatusEmailTask(queue.OrderStatusEmailPayload{
+		OrderID: 109,
+		Status:  constants.OrderStatusDelivered,
+	})
+	if err != nil {
+		t.Fatalf("new order status email task failed: %v", err)
+	}
+
+	emailConfig := config.EmailConfig{
+		Enabled: true,
+		Host:    "127.0.0.1",
+		Port:    1,
+		From:    "sender@example.com",
+	}
+	consumer := &Consumer{
+		Container: &container.Container{EmailSender: notificationsmtp.New(&emailConfig)},
+		orderReader: orderStatusEmailWorkerOrderRepoStub{order: &orderdomain.Order{
+			ID:          109,
+			OrderNo:     "DJ-ORDER-109",
+			Status:      constants.OrderStatusRefunded,
+			GuestEmail:  "buyer@example.com",
+			GuestLocale: "en-US",
+			Currency:    "USD",
+		}},
+	}
+	if err := consumer.handleOrderStatusEmail(context.Background(), task); err != nil {
+		t.Fatalf("expected superseded delivered task to be dropped, got %v", err)
+	}
+}
+
 func TestBuildOrderFulfillmentEmailPayloadFromChildren(t *testing.T) {
 	order := &orderdomain.Order{
 		Children: []orderdomain.Order{

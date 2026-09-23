@@ -4,12 +4,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/smtp"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dujiao-next/internal/config"
 	"github.com/dujiao-next/internal/i18n"
@@ -224,6 +226,45 @@ func TestSendTextEmailSkipTelegramPlaceholder(t *testing.T) {
 	service := &Service{}
 	if err := service.sendTextEmail("telegram_6059928735@login.local", "subject", "body"); err != nil {
 		t.Fatalf("sendTextEmail() should skip telegram placeholder email, got %v", err)
+	}
+}
+
+func TestNewSMTPClientWithTimeoutBoundsUnresponsiveServer(t *testing.T) {
+	for _, useSSL := range []bool{false, true} {
+		name := "plain"
+		if useSSL {
+			name = "ssl"
+		}
+		t.Run(name, func(t *testing.T) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("listen failed: %v", err)
+			}
+			defer listener.Close()
+
+			release := make(chan struct{})
+			defer close(release)
+			go func() {
+				conn, acceptErr := listener.Accept()
+				if acceptErr != nil {
+					return
+				}
+				defer conn.Close()
+				<-release
+			}()
+
+			started := time.Now()
+			client, err := newSMTPClientWithTimeout(listener.Addr().String(), "localhost", useSSL, 100*time.Millisecond, 100*time.Millisecond)
+			if client != nil {
+				_ = client.Close()
+			}
+			if err == nil {
+				t.Fatal("expected unresponsive SMTP server to time out")
+			}
+			if elapsed := time.Since(started); elapsed > time.Second {
+				t.Fatalf("SMTP timeout took too long: %s", elapsed)
+			}
+		})
 	}
 }
 

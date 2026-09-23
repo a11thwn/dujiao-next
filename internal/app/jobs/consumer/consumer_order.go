@@ -89,6 +89,15 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 	if status == "" {
 		status = strings.TrimSpace(order.Status)
 	}
+	if shouldSkipSupersededOrderStatusEmail(status, order.Status) {
+		logger.Infow("worker_order_status_email_skip_superseded",
+			"order_id", order.ID,
+			"order_no", order.OrderNo,
+			"task_status", status,
+			"current_status", order.Status,
+		)
+		return nil
+	}
 	if status == constants.OrderStatusCanceled {
 		logger.Debugw("worker_order_status_email_skip_canceled",
 			"order_id", order.ID,
@@ -208,6 +217,22 @@ func (c *Consumer) handleOrderStatusEmail(ctx context.Context, task *asynq.Task)
 		}
 	}
 	return nil
+}
+
+// shouldSkipSupersededOrderStatusEmail 防止失败重试把已经被退款/取消覆盖的交付邮件晚发给用户。
+// delivered/completed 邮件可能包含卡密等交付内容，因此只要订单已进入退款或取消状态就必须丢弃。
+func shouldSkipSupersededOrderStatusEmail(taskStatus, currentStatus string) bool {
+	taskStatus = strings.ToLower(strings.TrimSpace(taskStatus))
+	currentStatus = strings.ToLower(strings.TrimSpace(currentStatus))
+	if taskStatus != constants.OrderStatusDelivered && taskStatus != constants.OrderStatusCompleted {
+		return false
+	}
+	switch currentStatus {
+	case constants.OrderStatusRefunded, constants.OrderStatusPartiallyRefunded, constants.OrderStatusCanceled:
+		return true
+	default:
+		return false
+	}
 }
 
 func (c *Consumer) resolveOrderEmailBrand(ctx context.Context, order *orderdomain.Order) (mailbrand.Brand, error) {

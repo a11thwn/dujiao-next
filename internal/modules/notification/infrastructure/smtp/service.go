@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"mime"
+	"net"
 	"net/mail"
 	"net/smtp"
 	"strings"
@@ -53,6 +54,13 @@ func generateMessageID(from string) string {
 type Service struct {
 	cfg *config.EmailConfig
 }
+
+const (
+	// smtpDialTimeout 限制 TCP/TLS 建连与 TLS 握手等待，避免依赖操作系统级超时。
+	smtpDialTimeout = 10 * time.Second
+	// smtpSessionTimeout 限制 SMTP greeting、认证、DATA 与 QUIT 整个会话的读写等待。
+	smtpSessionTimeout = 30 * time.Second
+)
 
 // New 创建邮件服务
 func New(cfg *config.EmailConfig) *Service {
@@ -487,16 +495,8 @@ func buildEmailMessage(from, to, subject, body string, replyTo ...string) string
 }
 
 func sendMailWithSSL(addr, host, from string, to []string, msg []byte, username, password string) (err error) {
-	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: host})
+	client, err := newSMTPClient(addr, host, true)
 	if err != nil {
-		return err
-	}
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		if closeErr := conn.Close(); closeErr != nil && !isSMTPAlreadyClosedError(closeErr) {
-			logger.Debugw("smtp_tls_conn_close_failed", "host", host, "addr", addr, "error", closeErr)
-		}
 		return err
 	}
 	defer closeSMTPClientOnError(client, &err, host, addr)
@@ -510,7 +510,7 @@ func sendMailWithSSL(addr, host, from string, to []string, msg []byte, username,
 }
 
 func sendMailWithStartTLS(addr, host, from string, to []string, msg []byte, username, password string) (err error) {
-	client, err := smtp.Dial(addr)
+	client, err := newSMTPClient(addr, host, false)
 	if err != nil {
 		return err
 	}
@@ -529,7 +529,7 @@ func sendMailWithStartTLS(addr, host, from string, to []string, msg []byte, user
 }
 
 func sendMailPlain(addr, host, from string, to []string, msg []byte, username, password string) (err error) {
-	client, err := smtp.Dial(addr)
+	client, err := newSMTPClient(addr, host, false)
 	if err != nil {
 		return err
 	}
@@ -541,6 +541,43 @@ func sendMailPlain(addr, host, from string, to []string, msg []byte, username, p
 
 	err = sendSMTPData(client, host, addr, from, to, msg)
 	return err
+}
+
+// newSMTPClient 创建带显式建连与会话截止时间的 SMTP 客户端。
+// net/smtp 的 Dial/tls.Dial 默认没有覆盖完整 SMTP 会话的超时；远端接受连接后不回应时，
+// Worker 会一直占用任务直到操作系统 TCP 超时，继而把队列重试拖延到十几分钟以后。
+func newSMTPClient(addr, host string, useSSL bool) (*smtp.Client, error) {
+	return newSMTPClientWithTimeout(addr, host, useSSL, smtpDialTimeout, smtpSessionTimeout)
+}
+
+func newSMTPClientWithTimeout(addr, host string, useSSL bool, dialTimeout, sessionTimeout time.Duration) (*smtp.Client, error) {
+	dialer := &net.Dialer{Timeout: dialTimeout}
+	var (
+		conn net.Conn
+		err  error
+	)
+	if useSSL {
+		conn, err = tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{ServerName: host})
+	} else {
+		conn, err = dialer.Dial("tcp", addr)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if sessionTimeout > 0 {
+		if err := conn.SetDeadline(time.Now().Add(sessionTimeout)); err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+	}
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		if closeErr := conn.Close(); closeErr != nil && !isSMTPAlreadyClosedError(closeErr) {
+			logger.Debugw("smtp_conn_close_failed", "host", host, "addr", addr, "error", closeErr)
+		}
+		return nil, err
+	}
+	return client, nil
 }
 
 const (
