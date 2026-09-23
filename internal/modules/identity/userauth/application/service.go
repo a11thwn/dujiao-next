@@ -258,6 +258,20 @@ func (s *Service) checkRegistrationEmailDomain(email string) error {
 	return settingsapp.CheckRegistrationEmailDomainAllowed(email, policy)
 }
 
+func (s *Service) newUserPurchaseApproval() (string, error) {
+	if s == nil || s.settingService == nil {
+		return "pending", nil
+	}
+	enabled, err := s.settingService.GetNewUserAutoPurchase()
+	if err != nil {
+		return "", err
+	}
+	if enabled {
+		return "approved", nil
+	}
+	return "pending", nil
+}
+
 // Register 用户注册
 func (s *Service) Register(email, password, code string, agreementAccepted bool, emailVerificationEnabled bool) (*userdomain.User, string, time.Time, error) {
 	if !agreementAccepted {
@@ -292,6 +306,10 @@ func (s *Service) Register(email, password, code string, agreementAccepted bool,
 	if err != nil {
 		return nil, "", time.Time{}, err
 	}
+	purchaseApproval, err := s.newUserPurchaseApproval()
+	if err != nil {
+		return nil, "", time.Time{}, err
+	}
 
 	now := time.Now()
 	nickname := resolveNicknameFromEmail(normalized)
@@ -300,7 +318,7 @@ func (s *Service) Register(email, password, code string, agreementAccepted bool,
 		PasswordHash:     string(hashedPassword),
 		DisplayName:      nickname,
 		Status:           constants.UserStatusActive,
-		PurchaseApproval: "pending",
+		PurchaseApproval: purchaseApproval,
 		EmailVerifiedAt:  &now,
 		CreatedAt:        now,
 		UpdatedAt:        now,

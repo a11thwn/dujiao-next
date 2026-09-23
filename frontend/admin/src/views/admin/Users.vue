@@ -8,6 +8,7 @@ import IdCell from '@/components/IdCell.vue'
 import { purchaseApprovalClass, userStatusClass, userStatusLabel } from '@/utils/status'
 import { formatDate, formatMoney, getLocalizedText, toRFC3339 } from '@/utils/format'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { toggleArrayMember } from '@/lib/utils'
@@ -19,10 +20,50 @@ import ListPagination from '@/components/ListPagination.vue'
 import { useListRefresh, type ListFetchOptions } from '@/composables/useListRefresh'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { confirmAction } from '@/utils/confirm'
+import { notifyError, notifySuccess } from '@/utils/notify'
+import { useAdminAuthStore } from '@/stores/auth'
 import { useFormValidation, rules } from '@/composables/useFormValidation'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-vue-next'
 
 const { t } = useI18n()
+const authStore = useAdminAuthStore()
+const canReadPurchaseDefault = computed(() => authStore.hasPermission('GET:/admin/users/purchase-default'))
+const canChangePurchaseDefault = computed(() => authStore.hasPermission('PUT:/admin/users/purchase-default'))
+const purchaseDefault = ref(false)
+const purchaseDefaultReady = ref(false)
+const savingPurchaseDefault = ref(false)
+
+const fetchPurchaseDefault = async () => {
+  if (!canReadPurchaseDefault.value) return
+  purchaseDefaultReady.value = false
+  try {
+    const response = await adminAPI.getNewUserPurchaseDefault()
+    purchaseDefault.value = response.data.data?.enabled === true
+    purchaseDefaultReady.value = true
+  } catch (err: any) {
+    notifyError(err?.message || t('admin.users.purchaseDefault.loadFailed'))
+  }
+}
+
+const changePurchaseDefault = async (enabled: boolean) => {
+  if (!purchaseDefaultReady.value || !canChangePurchaseDefault.value || savingPurchaseDefault.value || enabled === purchaseDefault.value) return
+  const confirmed = await confirmAction({
+    title: t('admin.users.purchaseDefault.confirmTitle'),
+    description: t(enabled ? 'admin.users.purchaseDefault.confirmEnable' : 'admin.users.purchaseDefault.confirmDisable'),
+    variant: enabled ? 'destructive' : 'default',
+  })
+  if (!confirmed) return
+  savingPurchaseDefault.value = true
+  try {
+    const response = await adminAPI.updateNewUserPurchaseDefault(enabled)
+    purchaseDefault.value = response.data.data?.enabled === true
+    notifySuccess(t('admin.users.purchaseDefault.saved'))
+  } catch (err: any) {
+    notifyError(err?.message || t('admin.users.purchaseDefault.saveFailed'))
+  } finally {
+    savingPurchaseDefault.value = false
+  }
+}
 const loading = ref(true)
 const { refreshing, refreshList } = useListRefresh()
 const users = ref<AdminUser[]>([])
@@ -281,6 +322,7 @@ const formatLocale = (raw?: string) => {
 }
 
 onMounted(() => {
+  fetchPurchaseDefault()
   fetchSiteCurrency()
   fetchUsers()
   fetchMemberLevels()
@@ -291,6 +333,20 @@ onMounted(() => {
   <div class="space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h1 class="text-2xl font-semibold">{{ t('admin.users.title') }}</h1>
+    </div>
+
+    <div v-if="canReadPurchaseDefault" class="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <label for="new-user-purchase-default" class="font-medium">{{ t('admin.users.purchaseDefault.title') }}</label>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('admin.users.purchaseDefault.description') }}</p>
+      </div>
+      <Switch
+        id="new-user-purchase-default"
+        :model-value="purchaseDefault"
+        :disabled="!purchaseDefaultReady || !canChangePurchaseDefault || savingPurchaseDefault"
+        :aria-label="t('admin.users.purchaseDefault.title')"
+        @update:model-value="changePurchaseDefault"
+      />
     </div>
 
     <div class="rounded-xl border border-border bg-card p-4 shadow-sm">

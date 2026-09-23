@@ -234,6 +234,23 @@ func (s *Service) GetOrderPaymentExpireMinutes(defaultValue int) (int, error) {
 	return cfg.PaymentExpireMinutes, nil
 }
 
+// GetNewUserAutoPurchase returns whether newly registered users bypass purchase review.
+func (s *Service) GetNewUserAutoPurchase() (bool, error) {
+	value, err := s.GetByKey(constants.SettingKeyNewUserPurchaseConfig)
+	if err != nil || value == nil {
+		return false, err
+	}
+	return parseSettingBool(value[constants.SettingFieldAutoApprovePurchase]), nil
+}
+
+// SetNewUserAutoPurchase changes the default for future registrations only.
+func (s *Service) SetNewUserAutoPurchase(enabled bool) error {
+	_, err := s.Update(constants.SettingKeyNewUserPurchaseConfig, map[string]interface{}{
+		constants.SettingFieldAutoApprovePurchase: enabled,
+	})
+	return err
+}
+
 // GetRegistrationEnabled 获取注册开关
 func (s *Service) GetRegistrationEnabled(defaultValue bool) (bool, error) {
 	if s == nil {

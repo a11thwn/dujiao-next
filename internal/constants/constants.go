@@ -472,6 +472,8 @@ const (
 	SettingFieldEmailVerificationEnabled    = "email_verification_enabled"
 	SettingFieldEmailDomainAllowlistEnabled = "email_domain_allowlist_enabled"
 	SettingFieldAllowedEmailDomains         = "allowed_email_domains"
+	SettingKeyNewUserPurchaseConfig         = "new_user_purchase_config"
+	SettingFieldAutoApprovePurchase         = "auto_approve_purchase"
 
 	SettingKeyOrderRiskControlConfig = "order_risk_control_config"
 

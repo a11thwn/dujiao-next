@@ -255,7 +255,7 @@ func (s *Service) loginGoogleTransaction(
 			if err = settingsapp.CheckRegistrationEmailDomainAllowed(verified.Email, registration.EmailDomain); err != nil {
 				return err
 			}
-			user, err = newGoogleUser(verified)
+			user, err = newGoogleUser(verified, registration.PurchaseApproval)
 			if err != nil {
 				return err
 			}
@@ -314,12 +314,13 @@ func activeTransactionUser(tx AuthTransaction, userID uint) (*userdomain.User, e
 }
 
 type googleRegistrationSnapshot struct {
-	Enabled     bool
-	EmailDomain settingsapp.RegistrationEmailDomainPolicy
+	Enabled          bool
+	EmailDomain      settingsapp.RegistrationEmailDomainPolicy
+	PurchaseApproval string
 }
 
 func (s *Service) loadGoogleRegistrationSnapshot() (googleRegistrationSnapshot, error) {
-	snapshot := googleRegistrationSnapshot{Enabled: true}
+	snapshot := googleRegistrationSnapshot{Enabled: true, PurchaseApproval: "pending"}
 	if s == nil || s.settingService == nil {
 		return snapshot, nil
 	}
@@ -331,12 +332,17 @@ func (s *Service) loadGoogleRegistrationSnapshot() (googleRegistrationSnapshot, 
 	if err != nil {
 		return snapshot, err
 	}
+	approval, err := s.newUserPurchaseApproval()
+	if err != nil {
+		return snapshot, err
+	}
 	snapshot.Enabled = enabled
 	snapshot.EmailDomain = policy
+	snapshot.PurchaseApproval = approval
 	return snapshot, nil
 }
 
-func newGoogleUser(verified *googleauthapp.VerifiedIdentity) (*userdomain.User, error) {
+func newGoogleUser(verified *googleauthapp.VerifiedIdentity, purchaseApproval string) (*userdomain.User, error) {
 	passwordHash, err := generateGooglePlaceholderPassword()
 	if err != nil {
 		return nil, err
@@ -352,7 +358,7 @@ func newGoogleUser(verified *googleauthapp.VerifiedIdentity) (*userdomain.User, 
 		PasswordSetupRequired: true,
 		DisplayName:           displayName,
 		Status:                constants.UserStatusActive,
-		PurchaseApproval:      "pending",
+		PurchaseApproval:      purchaseApproval,
 		EmailVerifiedAt:       &now,
 		CreatedAt:             now,
 		UpdatedAt:             now,

@@ -83,6 +83,47 @@ type approvalDirectory struct {
 	user userdomain.User
 }
 
+type purchaseDefaultStub struct{ enabled bool }
+
+func (s *purchaseDefaultStub) GetNewUserAutoPurchase() (bool, error) { return s.enabled, nil }
+func (s *purchaseDefaultStub) SetNewUserAutoPurchase(enabled bool) error {
+	s.enabled = enabled
+	return nil
+}
+
+func TestAdminPurchaseDefaultRequiresBooleanAndPersistsBothDirections(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	settings := &purchaseDefaultStub{}
+	router := gin.New()
+	RegisterAdminRoutes(router.Group("/admin"), &AdminHandler{purchaseDefaults: settings})
+	check := func(method, body string, wantCode int, wantEnabled bool) {
+		t.Helper()
+		req := httptest.NewRequest(method, "/admin/users/purchase-default", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		var responseBody struct {
+			StatusCode int `json:"status_code"`
+			Data       struct {
+				Enabled bool `json:"enabled"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &responseBody); err != nil {
+			t.Fatal(err)
+		}
+		if responseBody.StatusCode != wantCode || settings.enabled != wantEnabled {
+			t.Fatalf("status=%d enabled=%v body=%s", responseBody.StatusCode, settings.enabled, rec.Body.String())
+		}
+		if wantCode == response.CodeOK && responseBody.Data.Enabled != wantEnabled {
+			t.Fatalf("response state mismatch: %s", rec.Body.String())
+		}
+	}
+	check(http.MethodGet, "", response.CodeOK, false)
+	check(http.MethodPut, `{"enabled":true}`, response.CodeOK, true)
+	check(http.MethodPut, `{}`, response.CodeBadRequest, true)
+	check(http.MethodPut, `{"enabled":false}`, response.CodeOK, false)
+}
+
 func (d *approvalDirectory) GetByID(uint) (*userdomain.User, error) { u := d.user; return &u, nil }
 func (d *approvalDirectory) Update(u *userdomain.User) error        { d.user = *u; return nil }
 func TestAdminCanChangeExistingUserPurchasePermission(t *testing.T) {

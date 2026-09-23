@@ -170,3 +170,29 @@ func TestEmailRegistrationNeedsPurchaseApproval(t *testing.T) {
 		t.Fatalf("registration must allow login but require review")
 	}
 }
+
+func TestEmailRegistrationPurchaseDefaultAffectsFutureUsersOnly(t *testing.T) {
+	svc, settings, db := newRegistrationDomainPolicyAuthService(t)
+	first, _, _, err := svc.Register("first@example.com", "Password123!", "", true, false)
+	if err != nil || first == nil || first.PurchaseApproval != "pending" {
+		t.Fatalf("default registration: user=%+v err=%v", first, err)
+	}
+	if err := settings.SetNewUserAutoPurchase(true); err != nil {
+		t.Fatal(err)
+	}
+	second, _, _, err := svc.Register("second@example.com", "Password123!", "", true, false)
+	if err != nil || second == nil || second.PurchaseApproval != "approved" {
+		t.Fatalf("enabled registration: user=%+v err=%v", second, err)
+	}
+	if err := settings.SetNewUserAutoPurchase(false); err != nil {
+		t.Fatal(err)
+	}
+	third, _, _, err := svc.Register("third@example.com", "Password123!", "", true, false)
+	if err != nil || third == nil || third.PurchaseApproval != "pending" {
+		t.Fatalf("disabled registration: user=%+v err=%v", third, err)
+	}
+	var unchanged userdomain.User
+	if err := db.First(&unchanged, first.ID).Error; err != nil || unchanged.PurchaseApproval != "pending" {
+		t.Fatalf("existing user changed: user=%+v err=%v", unchanged, err)
+	}
+}

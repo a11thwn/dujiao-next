@@ -107,15 +107,16 @@ type AuthStateCache interface {
 
 // AdminHandler 处理后台用户管理 HTTP 请求。
 type AdminHandler struct {
-	users         UserDirectory
-	emails        EmailNormalizer
-	wallets       WalletBalances
-	oauth         OAuthIdentityDirectory
-	oauthUnbinder OAuthIdentityUnbinder
-	couponUsages  CouponUsageDirectory
-	coupons       CouponDirectory
-	products      ProductDirectory
-	authState     AuthStateCache
+	users            UserDirectory
+	emails           EmailNormalizer
+	wallets          WalletBalances
+	oauth            OAuthIdentityDirectory
+	oauthUnbinder    OAuthIdentityUnbinder
+	couponUsages     CouponUsageDirectory
+	coupons          CouponDirectory
+	products         ProductDirectory
+	authState        AuthStateCache
+	purchaseDefaults PurchaseDefaultSettings
 }
 
 func NewAdminHandler(
@@ -128,6 +129,7 @@ func NewAdminHandler(
 	coupons CouponDirectory,
 	products ProductDirectory,
 	authState AuthStateCache,
+	purchaseDefaults PurchaseDefaultSettings,
 ) *AdminHandler {
 	if users == nil {
 		panic("admin user handler: users is nil")
@@ -153,17 +155,61 @@ func NewAdminHandler(
 	if products == nil {
 		panic("admin user handler: products is nil")
 	}
-	return &AdminHandler{
-		users:         users,
-		emails:        emails,
-		wallets:       wallets,
-		oauth:         oauth,
-		oauthUnbinder: oauthUnbinder,
-		couponUsages:  couponUsages,
-		coupons:       coupons,
-		products:      products,
-		authState:     authState,
+	if purchaseDefaults == nil {
+		panic("admin user handler: purchaseDefaults is nil")
 	}
+	return &AdminHandler{
+		users:            users,
+		emails:           emails,
+		wallets:          wallets,
+		oauth:            oauth,
+		oauthUnbinder:    oauthUnbinder,
+		couponUsages:     couponUsages,
+		coupons:          coupons,
+		products:         products,
+		authState:        authState,
+		purchaseDefaults: purchaseDefaults,
+	}
+}
+
+// PurchaseDefaultSettings stores the default purchase approval for future users.
+type PurchaseDefaultSettings interface {
+	GetNewUserAutoPurchase() (bool, error)
+	SetNewUserAutoPurchase(enabled bool) error
+}
+
+type purchaseDefaultRequest struct {
+	Enabled *bool `json:"enabled" binding:"required"`
+}
+
+func (h *AdminHandler) GetPurchaseDefault(c *gin.Context) {
+	if h.purchaseDefaults == nil {
+		ginutil.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", nil)
+		return
+	}
+	enabled, err := h.purchaseDefaults.GetNewUserAutoPurchase()
+	if err != nil {
+		ginutil.RespondError(c, response.CodeInternal, "error.settings_fetch_failed", err)
+		return
+	}
+	response.Success(c, gin.H{"enabled": enabled})
+}
+
+func (h *AdminHandler) UpdatePurchaseDefault(c *gin.Context) {
+	var req purchaseDefaultRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ginutil.RespondBindError(c, err)
+		return
+	}
+	if h.purchaseDefaults == nil {
+		ginutil.RespondError(c, response.CodeInternal, "error.settings_save_failed", nil)
+		return
+	}
+	if err := h.purchaseDefaults.SetNewUserAutoPurchase(*req.Enabled); err != nil {
+		ginutil.RespondError(c, response.CodeInternal, "error.settings_save_failed", err)
+		return
+	}
+	response.Success(c, gin.H{"enabled": *req.Enabled})
 }
 
 // UpdateAdminUserRequest 管理员更新用户请求。

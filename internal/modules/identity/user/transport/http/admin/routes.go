@@ -8,6 +8,8 @@ func RegisterAdminRoutes(authorized gin.IRoutes, handler *AdminHandler) {
 		panic("admin user routes: required dependency is nil")
 	}
 	authorized.GET("/users", handler.GetAdminUsers)
+	authorized.GET("/users/purchase-default", handler.GetPurchaseDefault)
+	authorized.PUT("/users/purchase-default", handler.UpdatePurchaseDefault)
 	authorized.PUT("/users/batch-status", handler.BatchUpdateUserStatus)
 	authorized.DELETE("/users/:id/oauth/telegram", handler.UnbindAdminUserTelegram)
 	authorized.DELETE("/users/:id/oauth/google", handler.UnbindAdminUserGoogle)

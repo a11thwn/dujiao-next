@@ -105,6 +105,8 @@ func BuiltinRoleSeeds() []RoleSeed {
 				{Object: "/admin/order-refunds/:id", Action: "GET"},
 				{Object: "/admin/fulfillments", Action: "POST"},
 				{Object: "/admin/users", Action: "GET"},
+				{Object: "/admin/users/purchase-default", Action: "GET"},
+				{Object: "/admin/users/purchase-default", Action: "PUT"},
 				{Object: "/admin/users/:id", Action: "GET"},
 				{Object: "/admin/users/:id", Action: "PUT"},
 				{Object: "/admin/users/batch-status", Action: "PUT"},
@@ -222,6 +224,8 @@ func BuiltinRoleSeeds() []RoleSeed {
 			Policies: []Policy{
 				// 系统设置
 				{Object: "/admin/settings", Action: "*"},
+				{Object: "/admin/users/purchase-default", Action: "GET"},
+				{Object: "/admin/users/purchase-default", Action: "PUT"},
 				{Object: "/admin/settings/smtp", Action: "*"},
 				{Object: "/admin/settings/smtp/test", Action: "POST"},
 				{Object: "/admin/settings/captcha", Action: "*"},

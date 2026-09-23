@@ -96,6 +96,17 @@ func TestLoginVerifiedGoogleCreatesVerifiedUserAndIdentity(t *testing.T) {
 	}
 }
 
+func TestGoogleRegistrationUsesEnabledPurchaseDefault(t *testing.T) {
+	svc, settings, _ := setupTelegramOAuthTestService(t)
+	if err := settings.SetNewUserAutoPurchase(true); err != nil {
+		t.Fatal(err)
+	}
+	result, err := svc.LoginVerifiedGoogle(verifiedGoogleIdentity("autoapproved@gmail.com", "google-autoapproved", true))
+	if err != nil || result == nil || result.User == nil || result.User.PurchaseApproval != "approved" {
+		t.Fatalf("Google registration: result=%+v err=%v", result, err)
+	}
+}
+
 func TestLoginVerifiedGoogleRespectsRegistrationAndEmailDomainSettings(t *testing.T) {
 	t.Run("registration disabled", func(t *testing.T) {
 		svc, settings, _ := setupTelegramOAuthTestService(t)

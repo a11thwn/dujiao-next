@@ -9,6 +9,21 @@ import (
 	"github.com/dujiao-next/internal/constants"
 )
 
+func TestNewUserAutoPurchaseDefaultsOffAndPersistsBothDirections(t *testing.T) {
+	svc := NewService(newMockSettingRepo())
+	for index, want := range []bool{false, true, false} {
+		if index > 0 {
+			if err := svc.SetNewUserAutoPurchase(want); err != nil {
+				t.Fatal(err)
+			}
+		}
+		enabled, err := svc.GetNewUserAutoPurchase()
+		if err != nil || enabled != want {
+			t.Fatalf("enabled=%v, want=%v, err=%v", enabled, want, err)
+		}
+	}
+}
+
 func TestUpdateOrderSettingNormalized(t *testing.T) {
 	repo := newMockSettingRepo()
 	svc := NewService(repo)

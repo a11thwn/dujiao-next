@@ -222,6 +222,20 @@ func TestFindOrCreateTelegramUserIgnoresEmailDomainAllowlist(t *testing.T) {
 	}
 }
 
+func TestTelegramRegistrationUsesEnabledPurchaseDefault(t *testing.T) {
+	svc, settings, _ := setupTelegramOAuthTestService(t)
+	if err := settings.SetNewUserAutoPurchase(true); err != nil {
+		t.Fatal(err)
+	}
+	user, _, _, err := svc.ProvisionTelegramChannelIdentity(userauthapp.TelegramChannelIdentityInput{
+		ChannelUserID: "autoapproved_tg_10001",
+		Username:      "autoapproved_tg",
+	})
+	if err != nil || user == nil || user.PurchaseApproval != "approved" {
+		t.Fatalf("Telegram registration: user=%+v err=%v", user, err)
+	}
+}
+
 func TestLoginWithTelegramAllowsExistingIdentityWhenRegistrationDisabled(t *testing.T) {
 	svc, settings, db := setupTelegramOAuthTestService(t)
 

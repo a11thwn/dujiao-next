@@ -16,5 +16,6 @@ func NewHandler(c *container.Container) *adminusertransport.AdminHandler {
 		adminUserCouponAdapter{coupons: c.CouponRepo},
 		adminUserProductAdapter{products: c.ProductRepo},
 		adminUserAuthStateAdapter{},
+		c.SettingService,
 	)
 }

@@ -53,6 +53,10 @@ func (s *Service) findOrCreateTelegramUser(verified *telegramauthapp.IdentityVer
 			return nil, ErrRegistrationDisabled
 		}
 	}
+	purchaseApproval, err := s.newUserPurchaseApproval()
+	if err != nil {
+		return nil, err
+	}
 
 	randomSuffix, err := randomNumericCode(16)
 	if err != nil {
@@ -71,7 +75,7 @@ func (s *Service) findOrCreateTelegramUser(verified *telegramauthapp.IdentityVer
 		PasswordSetupRequired: true,
 		DisplayName:           telegramidentity.ResolveDisplayName(verified.ProviderUserID, verified.Username, verified.FirstName, verified.LastName),
 		Status:                constants.UserStatusActive,
-		PurchaseApproval:      "pending",
+		PurchaseApproval:      purchaseApproval,
 		LastLoginAt:           &now,
 		CreatedAt:             now,
 		UpdatedAt:             now,

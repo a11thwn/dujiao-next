@@ -63,6 +63,12 @@ var defaultSettingRegistry = MustNewRegistry(
 		Effects:   []Effect{EffectInvalidatePublicConfigCache},
 	},
 	Definition{
+		Key: constants.SettingKeyNewUserPurchaseConfig,
+		Normalize: func(value jsonmap.JSON) jsonmap.JSON {
+			return jsonmap.JSON{constants.SettingFieldAutoApprovePurchase: parseSettingBool(value[constants.SettingFieldAutoApprovePurchase])}
+		},
+	},
+	Definition{
 		Key:       constants.SettingKeyOrderRiskControlConfig,
 		Normalize: settingssecurity.NormalizeOrderRiskControlConfigJSON,
 	},
